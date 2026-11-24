@@ -25,12 +25,16 @@ import { analyzeIndoorAir } from "@/lib/calculators/indoor-air";
 import { globalRateLimiter } from "@/lib/security/rate-limit";
 
 const mockGenerateContent = vi.fn();
+const mockGoogleGenAIOptions = vi.fn();
 
 vi.mock("@google/genai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@google/genai")>();
   return {
     ...actual,
     GoogleGenAI: class {
+      constructor(options?: unknown) {
+        mockGoogleGenAIOptions(options);
+      }
       models = {
         generateContent: mockGenerateContent,
       };
@@ -96,6 +100,7 @@ describe("Grounded AI Assistant & API Routes", () => {
 
   beforeEach(() => {
     mockGenerateContent.mockReset();
+    mockGoogleGenAIOptions.mockReset();
     clearPlanCache();
     globalRateLimiter.clear();
     process.env.GEMINI_API_KEY = "test_gemini_secret_key_12345";
@@ -128,35 +133,41 @@ describe("Grounded AI Assistant & API Routes", () => {
   });
 
   // ─── Model Default & Candidate Cascade Diagnostics ──────────────────
-  it("defaults GEMINI_MODEL to gemini-3.5-flash-lite and builds deduplicated cascade candidates", () => {
-    expect(getGeminiModel()).toBe("gemini-3.5-flash-lite");
+  it("defaults GEMINI_MODEL to gemini-4-hydrogen and excludes gemini-2.5-flash-lite from cascade", () => {
+    expect(getGeminiModel()).toBe("gemini-4-hydrogen");
     expect(getGeminiFallbackModels()).toEqual([
-      "gemini-3.6-flash",
-      "gemini-2.5-flash-lite",
-    ]);
-    expect(getGeminiCandidateModels()).toEqual([
+      "gemini-3.8-flash",
       "gemini-3.5-flash-lite",
       "gemini-3.6-flash",
-      "gemini-2.5-flash-lite",
+      "gemini-3.1-flash-lite",
     ]);
+    expect(getGeminiFallbackModels()).not.toContain("gemini-2.5-flash-lite");
+    expect(getGeminiCandidateModels()).toEqual([
+      "gemini-4-hydrogen",
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash",
+      "gemini-3.1-flash-lite",
+    ]);
+    expect(getGeminiCandidateModels()).not.toContain("gemini-2.5-flash-lite");
 
     process.env.GEMINI_MODEL = "   ";
-    expect(getGeminiModel()).toBe("gemini-3.5-flash-lite");
+    expect(getGeminiModel()).toBe("gemini-4-hydrogen");
 
-    process.env.GEMINI_MODEL = "gemini-3.6-flash";
-    process.env.GEMINI_FALLBACK_MODELS = "gemini-3.6-flash, gemini-4-hydrogen , ";
+    process.env.GEMINI_MODEL = "gemini-3.8-flash";
+    process.env.GEMINI_FALLBACK_MODELS = "gemini-3.8-flash, gemini-4-hydrogen , ";
     expect(getGeminiFallbackModels()).toEqual([
-      "gemini-3.6-flash",
+      "gemini-3.8-flash",
       "gemini-4-hydrogen",
     ]);
     expect(getGeminiCandidateModels()).toEqual([
-      "gemini-3.6-flash",
+      "gemini-3.8-flash",
       "gemini-4-hydrogen",
     ]);
   });
 
-  // ─── Multi-Model Cascade on 503/429/404/Timeout ─────────────────────
-  it("cascades to model #2 when model #1 throws 503 UNAVAILABLE and records modelUsed", async () => {
+  // ─── Multi-Model Cascade on 503/400/429/404/Timeout ─────────────────
+  it("cascades to model #2 when model #1 throws 503 UNAVAILABLE or 400 INVALID_ARGUMENT and records modelUsed", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const planPayload = {
@@ -197,20 +208,22 @@ describe("Grounded AI Assistant & API Routes", () => {
     );
 
     expect(planResult.mode).toBe("ai");
-    expect(planResult.modelUsed).toBe("gemini-3.6-flash");
+    expect(planResult.modelUsed).toBe("gemini-3.8-flash");
     expect(planResult.fallbackReason).toBeUndefined();
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-    expect(mockGenerateContent.mock.calls[0][0].model).toBe("gemini-3.5-flash-lite");
-    expect(mockGenerateContent.mock.calls[1][0].model).toBe("gemini-3.6-flash");
+    expect(mockGenerateContent.mock.calls[0][0].model).toBe("gemini-4-hydrogen");
+    expect(mockGenerateContent.mock.calls[1][0].model).toBe("gemini-3.8-flash");
 
     const warnLogs = JSON.stringify(warnSpy.mock.calls);
     expect(warnLogs).toContain("[VayuPlan Gemini]");
     expect(warnLogs).not.toContain("test_gemini_secret_key_12345");
 
-    // Chat cascade: model #1 fails with 503, model #2 succeeds
+    // Chat cascade: model #1 fails with 400 INVALID_ARGUMENT, model #2 succeeds
     mockGenerateContent.mockReset();
     mockGenerateContent
-      .mockRejectedValueOnce(new Error("503 UNAVAILABLE: high demand"))
+      .mockRejectedValueOnce(
+        new Error("400 INVALID_ARGUMENT: Developer instruction is not enabled")
+      )
       .mockResolvedValueOnce({
         text: JSON.stringify({
           answer: "Use an N95 mask in Vasant Kunj where NAQI is 280.",
@@ -225,9 +238,21 @@ describe("Grounded AI Assistant & API Routes", () => {
     );
 
     expect(chatResult.mode).toBe("ai");
-    expect(chatResult.modelUsed).toBe("gemini-3.6-flash");
+    expect(chatResult.modelUsed).toBe("gemini-3.8-flash");
     expect(chatResult.fallbackReason).toBeUndefined();
     expect(chatResult.answer).toContain("N95 mask");
+    expect(mockGoogleGenAIOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        httpOptions: { apiVersion: "v1beta" },
+      })
+    );
+    expect(mockGenerateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          thinkingConfig: { thinkingLevel: "LOW" },
+        }),
+      })
+    );
   });
 
   it("returns deterministic_fallback with fallbackReason: 'upstream_error' when all models fail with 503", async () => {
@@ -247,7 +272,7 @@ describe("Grounded AI Assistant & API Routes", () => {
     expect(planResult.mode).toBe("deterministic_fallback");
     expect(planResult.fallbackReason).toBe("upstream_error");
     expect(planResult.modelUsed).toBeUndefined();
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(5);
 
     mockGenerateContent.mockClear();
     const chatResult = await answerGroundedQuestion(
@@ -260,7 +285,7 @@ describe("Grounded AI Assistant & API Routes", () => {
     expect(chatResult.mode).toBe("deterministic_fallback");
     expect(chatResult.fallbackReason).toBe("upstream_error");
     expect(chatResult.modelUsed).toBeUndefined();
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(5);
     expect(errorSpy).toHaveBeenCalledWith(
       "[VayuPlan Gemini]",
       expect.objectContaining({ fallbackReason: "upstream_error" })
@@ -268,7 +293,7 @@ describe("Grounded AI Assistant & API Routes", () => {
   });
 
   // ─── Gemini Valid JSON Path (mode: 'ai') ────────────────────────────
-  it("returns mode: 'ai' with responseSchema and abortSignal configured", async () => {
+  it("returns mode: 'ai' with v1beta client, thinkingLevel LOW, responseSchema, and abortSignal", async () => {
     const validAiResponse = {
       mode: "ai",
       summary: "Grounded AI plan for Delhi commuter.",
@@ -300,17 +325,23 @@ describe("Grounded AI Assistant & API Routes", () => {
     );
 
     expect(result.mode).toBe("ai");
-    expect(result.modelUsed).toBe("gemini-3.5-flash-lite");
+    expect(result.modelUsed).toBe("gemini-4-hydrogen");
     expect(result.fallbackReason).toBeUndefined();
     expect(result.summary).toContain("Grounded AI plan");
     expect(result.morningRoutine[0].title).toBe("Wear N95 for Morning Drive");
 
+    expect(mockGoogleGenAIOptions).toHaveBeenCalledWith({
+      apiKey: "test_gemini_secret_key_12345",
+      httpOptions: { apiVersion: "v1beta" },
+    });
+
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gemini-3.5-flash-lite",
+        model: "gemini-4-hydrogen",
         config: expect.objectContaining({
           responseMimeType: "application/json",
           responseSchema: expect.any(Object),
+          thinkingConfig: { thinkingLevel: "LOW" },
           abortSignal: expect.any(AbortSignal),
         }),
       })
@@ -558,7 +589,7 @@ describe("Grounded AI Assistant & API Routes", () => {
 
       expect(json).toEqual({
         hasGeminiKey: true,
-        geminiModel: "gemini-3.5-flash-lite",
+        geminiModel: "gemini-4-hydrogen",
         hasWaqiToken: true,
       });
       const serialized = JSON.stringify(json);

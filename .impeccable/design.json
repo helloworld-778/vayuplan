@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T02:10:00+05:30",
+  "title": "Design System: VayuPlan",
+  "extensions": {
+    "colorMeta": {
+      "atmospheric-cobalt": {
+        "role": "primary",
+        "displayName": "Atmospheric Cobalt",
+        "canonical": "#1D4ED8",
+        "tonalRamp": ["#1E3A8A", "#1E40AF", "#1D4ED8", "#2563EB", "#3B82F6", "#60A5FA", "#BFDBFE", "#EFF6FF"]
+      },
+      "stratospheric-navy": {
+        "role": "secondary",
+        "displayName": "Stratospheric Navy",
+        "canonical": "#0F172A",
+        "tonalRamp": ["#020617", "#0F172A", "#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#E2E8F0"]
+      },
+      "graph-vellum": {
+        "role": "neutral",
+        "displayName": "Graph Vellum Canvas",
+        "canonical": "#F7F8FA",
+        "tonalRamp": ["#CBD5E1", "#DCE3EC", "#E2E8F0", "#EBF0F5", "#F1F4F8", "#F4F6F9", "#F7F8FA", "#FFFFFF"]
+      },
+      "carbon-ink": {
+        "role": "neutral",
+        "displayName": "Carbon Ink",
+        "canonical": "#0F172A",
+        "tonalRamp": ["#090D16", "#0F172A", "#1E293B", "#334155", "#475569", "#525E70", "#94A3B8", "#CBD5E1"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Bricolage Grotesque Display",
+        "purpose": "Persuade hero headlines on / and oversized primary CPCB NAQI numbers."
+      },
+      "headline": {
+        "displayName": "Bricolage Grotesque Section",
+        "purpose": "Section anchors, Today's Smart Brief headings, and scenario titles."
+      },
+      "title": {
+        "displayName": "Schibsted Grotesk Title",
+        "purpose": "Workspace module headings, Copilot rail header, and action card titles."
+      },
+      "body": {
+        "displayName": "Schibsted Grotesk Body",
+        "purpose": "High-legibility AI guidance copy, explanations, and commuter tables."
+      },
+      "label": {
+        "displayName": "JetBrains Mono Telemetry",
+        "purpose": "Numeric metrics with tabular-nums, IST timestamps, coordinates, and provenance tags."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet-level-1",
+        "value": "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03)",
+        "purpose": "Baseline elevation for plotted workspace sheets and cards."
+      },
+      {
+        "name": "sheet-level-2",
+        "value": "0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04)",
+        "purpose": "Hover/focus depth for interactive cards and the persistent Copilot rail."
+      },
+      {
+        "name": "tooltip-level-3",
+        "value": "0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.05)",
+        "purpose": "Floating chart tooltip card, combobox popover, and mobile AI drawer."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-observatory",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Hero choreography, panel reveals, and live numeric score transitions (180-420ms, zero under reduced-motion)."
+      },
+      {
+        "name": "tab-spring",
+        "value": "spring(stiffness=420, damping=34)",
+        "purpose": "Framer Motion layoutId active tab underline indicator."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "375px" },
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg-copilot-split", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary launch CTA on / and key workspace actions.",
+      "html": "<button class=\"ds-btn-primary\">Launch Air Assistant</button>",
+      "css": ".ds-btn-primary { background: #0F172A; color: #FFFFFF; padding: 12px 20px; border-radius: 8px; font-family: 'Schibsted Grotesk', sans-serif; font-size: 14px; font-weight: 600; border: 1px solid #0F172A; cursor: pointer; transition: background-color 180ms cubic-bezier(0.16,1,0.3,1), transform 180ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { background: #1D4ED8; border-color: #1D4ED8; transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }"
+    },
+    {
+      "name": "AI Copilot Trigger Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Atmospheric cobalt trigger for Ask VayuPlan queries and plan updates.",
+      "html": "<button class=\"ds-btn-accent\">Ask VayuPlan AI</button>",
+      "css": ".ds-btn-accent { background: #1D4ED8; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-family: 'Schibsted Grotesk', sans-serif; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: background-color 180ms ease; } .ds-btn-accent:hover { background: #1E40AF; } .ds-btn-accent:focus-visible { outline: 2px solid #0F172A; outline-offset: 2px; }"
+    },
+    {
+      "name": "City Search Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Debounced pan-India location combobox field.",
+      "html": "<input class=\"ds-input-field\" type=\"text\" placeholder=\"Search Indian city (e.g., Delhi, Pune, Kochi)...\" />",
+      "css": ".ds-input-field { width: 100%; background: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1; border-radius: 8px; padding: 10px 14px; font-family: 'Schibsted Grotesk', sans-serif; font-size: 14px; transition: border-color 160ms ease, box-shadow 160ms ease; } .ds-input-field::placeholder { color: #525E70; } .ds-input-field:focus { outline: none; border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.14); }"
+    },
+    {
+      "name": "CPCB Severity Chip (Poor)",
+      "kind": "chip",
+      "refersTo": "card-plate",
+      "description": "WCAG AA non-color-only severity pill with icon and numeric bounds.",
+      "html": "<span class=\"ds-chip-poor\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg>Poor (201 – 300)</span>",
+      "css": ".ds-chip-poor { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74; font-family: 'Schibsted Grotesk', sans-serif; font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Plotted Telemetry Sheet",
+      "kind": "card",
+      "refersTo": "card-plate",
+      "description": "Baseline daylight sheet card with hairline definition and soft warm-slate shadow.",
+      "html": "<div class=\"ds-card-plate\"><div class=\"ds-card-kicker\">CPCB NAQI TELEMETRY</div><div class=\"ds-card-val\">242</div></div>",
+      "css": ".ds-card-plate { background: #FFFFFF; border: 1px solid #DCE3EC; border-radius: 12px; padding: 24px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.03); } .ds-card-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #525E70; } .ds-card-val { font-family: 'Bricolage Grotesque', sans-serif; font-size: 48px; font-weight: 700; color: #0F172A; font-variant-numeric: tabular-nums; margin-top: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Atmospheric Sounding Strip-Chart",
+    "overview": "VayuPlan bridges public civic storytelling and high-precision environmental decision support through the visual grammar of an Indian atmospheric observatory strip-chart laid over a crisp daylight structural grid. Across both the public entry surface (/) and the AI-first operating workspace (/assistant), telemetry never floats as isolated decorative boxes; every number, curve, and Gemini synthesis anchors onto a calm graph-vellum drafting plane ruled by subtle construction hairlines (1px), disciplined elevation tiers, and high-contrast daylight ink. To replace the flat, boxed Stage 4 UI and make generative intelligence unmistakable, this system rejects dark-mode neon weather gauges, glassmorphism blur halos, nested card-in-card borders, and buried AI tabs. Instead, / speaks in Persuade mode with bold scale contrast and a live interactive city-sounding preview, while /assistant operates in Operate mode with an AI-synthesized Today's Smart Brief anchored at the top and a persistent right-hand Ask VayuPlan Copilot rail.",
+    "keyCharacteristics": [
+      "Daylight Graph-Vellum Discipline: Cool atmospheric mineral canvas (#F7F8FA) paired with pure plotted sheets (#FFFFFF) and faint structural ruling (#DCE3EC).",
+      "Dual-Voice Editorial & Operational Typography: Bricolage Grotesque commands / hero storytelling and primary NAQI numerals, Schibsted Grotesk carries high-scanability UI and guidance copy, and JetBrains Mono (tabular-nums) handles sensor metrics, IST timestamps, and coordinate tags exclusively.",
+      "AI-First Spatial Hierarchy: Gemini AI synthesis (Today's Smart Brief + persistent Ask VayuPlan Copilot) occupies primary visual real estate on /assistant rather than hiding behind a secondary tab.",
+      "Scrubbable Strip-Chart Ergonomics: Smooth cubic diurnal modeling with shaded safe/peak zones, vertical hover/touch crosshairs, and leader-dot floating inspection tooltips.",
+      "WCAG AA Severity Integrity: Six CPCB NAQI categories combine high-contrast badges (>= 4.5:1), distinct icons, and explicit text labels."
+    ],
+    "rules": [
+      {
+        "name": "The Atmospheric Restraint Rule",
+        "body": "Atmospheric Cobalt (#1D4ED8) never decorates passive backgrounds or competes with CPCB severity badges; reserve it strictly for active focus, AI Copilot cues, and interactive chart scrubbers (<= 12% viewport saturation).",
+        "section": "colors"
+      },
+      {
+        "name": "The Color-Independent Severity Rule",
+        "body": "Pollution severity is never conveyed by color alone; every NAQI badge renders text category, numeric bounds, and its distinct semantic icon together.",
+        "section": "colors"
+      },
+      {
+        "name": "The Zero-Costume Mono Rule",
+        "body": "Never set headings, narrative paragraphs, or buttons in JetBrains Mono; monospace is strictly an instrument of precision for live readings, timestamps, units, and provenance metadata.",
+        "section": "typography"
+      },
+      {
+        "name": "The Anti-Jitter Tabular Rule",
+        "body": "Every animating or dynamically updated numeric value (AQI dial, hourly tooltip, commute CO2, character counter) carries .tabular-nums so numbers tick smoothly without horizontal shift.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Zero-Glow Rule",
+        "body": "Never apply zero-offset colored neon halos, blur glows, or >1px colored left/right accent borders on cards. Depth comes strictly from directional daylight shadows and tonal wells.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep Ask VayuPlan Copilot and Today's Smart Brief immediately visible on /assistant without requiring a tab switch.",
+      "Do enforce WCAG AA (>= 4.5:1) contrast on all text, including muted telemetry labels (#525E70 minimum darkness on #FFFFFF/#F7F8FA) and all 6 CPCB NAQI severity tiers.",
+      "Do wrap all Framer Motion sequences in <MotionConfig reducedMotion=\"user\"> so prefers-reduced-motion: reduce disables spatial transitions cleanly.",
+      "Do preserve AbortController race-condition protection on city/preset fetches and min-w-[...] inside overflow-x-auto containers for zero horizontal overflow at 375px."
+    ],
+    "donts": [
+      "Don't render JetBrains Mono as decorative display/paragraph copy, or use dark-mode neon gradients, glassmorphism blur backdrops, or >1px colored left borders.",
+      "Don't bury / scenario launchers behind generic marketing claims; every preset card on / must derive from src/lib/presets.ts with zero hardcoded static AQI numbers.",
+      "Don't expose GEMINI_API_KEY, WAQI_API_TOKEN, or add third-party external CDN scripts that violate next.config.ts strict CSP."
+    ]
+  }
+}

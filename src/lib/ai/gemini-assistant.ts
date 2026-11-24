@@ -6,7 +6,7 @@
  * and automatic deterministic mathematical fallback with safe non-secret diagnostics.
  */
 
-import { GoogleGenAI, Type, type Schema } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type, type Schema } from "@google/genai";
 import { z } from "zod";
 import {
   AirQualitySnapshot,
@@ -25,7 +25,7 @@ import {
 import { MemoryCache } from "@/lib/security/cache";
 import { sanitizeString } from "@/lib/security/sanitize";
 
-const PER_ATTEMPT_TIMEOUT_MS = 10000;
+const PER_ATTEMPT_TIMEOUT_MS = 15000;
 
 const DEFAULT_DISCLAIMER =
   "Disclaimer: VayuPlan provides AI-synthesized environmental risk-mitigation insights grounded in CPCB NAQI telemetry and exposure physics. It is not personal medical advice.";
@@ -236,11 +236,16 @@ function isRetryableCascadeError(err: unknown, sanitizedMessage: string): boolea
       ? errObj.code
       : null;
 
-  if (numericStatus === 503 || numericStatus === 429 || numericStatus === 404) {
+  if (
+    numericStatus === 503 ||
+    numericStatus === 429 ||
+    numericStatus === 404 ||
+    numericStatus === 400
+  ) {
     return true;
   }
 
-  return /\b(503|429|404)\b|UNAVAILABLE|high\s+demand|RESOURCE[_\s]+EXHAUSTED|quota|rate[-_\s]?limit|too\s+many\s+requests|model[_\s]+not[_\s]+found|not\s+found|unsupported\s+model|abort(?:ed)?|timed?\s*out|timeout|ETIMEDOUT/i.test(
+  return /\b(503|429|404|400)\b|UNAVAILABLE|high\s+demand|RESOURCE[_\s]+EXHAUSTED|INVALID[_\s]+ARGUMENT|quota|rate[-_\s]?limit|too\s+many\s+requests|model[_\s]+not[_\s]+found|not\s+found|unsupported\s+model|abort(?:ed)?|timed?\s*out|timeout|ETIMEDOUT/i.test(
     sanitizedMessage
   );
 }
@@ -318,8 +323,9 @@ export interface ModelCascadeResult {
 }
 
 /**
- * Iterates through ordered Gemini candidate models with a 10s per-attempt timeout.
- * Automatically cascades to the next model on retryable errors (503, 429, 404, timeout).
+ * Iterates through ordered Gemini candidate models with a 15s per-attempt timeout
+ * and ThinkingLevel.LOW for fast, predictable free-tier latency.
+ * Automatically cascades to the next model on retryable errors (503, 429, 404, 400, timeout).
  */
 async function generateWithModelCascade(
   params: ModelCascadeParams
@@ -340,6 +346,9 @@ async function generateWithModelCascade(
           systemInstruction: params.systemInstruction,
           responseMimeType: params.responseMimeType,
           responseSchema: params.responseSchema,
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.LOW,
+          },
           abortSignal: controller.signal,
         },
       });
@@ -635,7 +644,10 @@ Generate a comprehensive JSON response adhering strictly to the AssistantPlanRes
   let attemptedModel = primaryModel;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { apiVersion: "v1beta" },
+    });
     const { rawText, modelUsed } = await generateWithModelCascade({
       ai,
       contents: userPrompt,
@@ -760,7 +772,10 @@ Provide a concise (2-4 sentences), factual, and directly actionable answer citin
   let attemptedModel = primaryModel;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { apiVersion: "v1beta" },
+    });
     const { rawText, modelUsed } = await generateWithModelCascade({
       ai,
       contents: prompt,

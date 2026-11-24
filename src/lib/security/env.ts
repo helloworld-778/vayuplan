@@ -23,19 +23,22 @@ export function hasGeminiApiKey(): boolean {
 }
 
 const DEFAULT_GEMINI_FALLBACK_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
   "gemini-3.6-flash",
-  "gemini-2.5-flash-lite",
+  "gemini-3.1-flash-lite",
 ];
 
-/** Gemini model identifier. Defaults to gemini-3.5-flash-lite. */
+/** Gemini model identifier. Defaults to gemini-4-hydrogen. */
 export function getGeminiModel(): string {
   const model = optionalEnv("GEMINI_MODEL").trim();
-  return model || "gemini-3.5-flash-lite";
+  return model || "gemini-4-hydrogen";
 }
 
 /**
  * Ordered list of fallback Gemini models read from optional comma-separated
- * GEMINI_FALLBACK_MODELS env var, defaulting to ['gemini-3.6-flash', 'gemini-2.5-flash-lite'].
+ * GEMINI_FALLBACK_MODELS env var, defaulting to
+ * ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'].
  */
 export function getGeminiFallbackModels(): string[] {
   const raw = optionalEnv("GEMINI_FALLBACK_MODELS").trim();
