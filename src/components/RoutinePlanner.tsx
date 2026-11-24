@@ -100,9 +100,22 @@ export function RoutinePlanner({
                 Gemini AI
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F4F6F6] text-[#2C3E50] border border-[#D5D8DC] text-xs font-bold font-mono">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F4F6F6] text-[#2C3E50] border border-[#D5D8DC] text-xs font-bold font-mono"
+                title={
+                  plan.fallbackReason
+                    ? `Fallback reason: ${plan.fallbackReason}`
+                    : undefined
+                }
+                data-fallback-reason={plan.fallbackReason}
+              >
                 <Cpu className="w-3.5 h-3.5 text-[#34495E]" />
                 Deterministic Physics Fallback
+              </span>
+            )}
+            {!isAi && plan.fallbackReason && (
+              <span className="text-[11px] font-mono text-[#6E7582]">
+                ({plan.fallbackReason})
               </span>
             )}
             <span className="text-xs text-[#6E7582]">

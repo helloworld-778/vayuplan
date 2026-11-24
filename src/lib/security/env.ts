@@ -22,9 +22,10 @@ export function hasGeminiApiKey(): boolean {
   return getGeminiApiKey() !== null;
 }
 
-/** Gemini model identifier. Defaults to gemini-2.5-flash. */
+/** Gemini model identifier. Defaults to gemini-3.5-flash-lite. */
 export function getGeminiModel(): string {
-  return optionalEnv("GEMINI_MODEL", "gemini-2.5-flash");
+  const model = optionalEnv("GEMINI_MODEL").trim();
+  return model || "gemini-3.5-flash-lite";
 }
 
 /** WAQI API token — returns string if configured, or null if unset. */

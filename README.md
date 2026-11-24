@@ -154,7 +154,7 @@ The application includes a prominent one-click preset strip for testing diverse 
    Add your Gemini API key and optional WAQI token in `.env.local`:
    ```ini
    GEMINI_API_KEY=your_gemini_api_key_here
-   GEMINI_MODEL=gemini-2.5-flash
+   GEMINI_MODEL=gemini-3.5-flash-lite
    WAQI_API_TOKEN=your_optional_waqi_token_here
    ```
    *(Note: If no API key is provided, VayuPlan automatically operates in Deterministic Physics Fallback mode without crashing).*

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import {
   AirQualitySnapshot,
+  FallbackReason,
   HouseholdProfile,
 } from "@/types/air-quality";
 import {
@@ -25,6 +26,7 @@ interface ChatMessage {
   sender: "user" | "assistant";
   text: string;
   mode?: "ai" | "deterministic_fallback";
+  fallbackReason?: FallbackReason;
   citedMetrics?: string[];
   timestamp: string;
 }
@@ -83,6 +85,7 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
         sender: "assistant",
         text: data.answer,
         mode: data.mode,
+        fallbackReason: data.fallbackReason,
         citedMetrics: data.citedMetrics,
         timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       };
@@ -166,9 +169,22 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
                         Gemini AI
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#2C3E50]">
+                      <span
+                        className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#2C3E50]"
+                        title={
+                          m.fallbackReason
+                            ? `Fallback reason: ${m.fallbackReason}`
+                            : undefined
+                        }
+                        data-fallback-reason={m.fallbackReason}
+                      >
                         <Cpu className="w-3 h-3 text-[#34495E]" />
                         Deterministic Physics Fallback
+                      </span>
+                    )}
+                    {m.mode !== "ai" && m.fallbackReason && (
+                      <span className="text-[10px] font-mono text-[#6E7582]">
+                        ({m.fallbackReason})
                       </span>
                     )}
                     <span className="text-[10px] text-[#7A8290] ml-auto">

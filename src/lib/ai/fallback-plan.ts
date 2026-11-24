@@ -10,6 +10,7 @@ import {
   ActionRecommendation,
   AirQualitySnapshot,
   AssistantPlanResponse,
+  FallbackReason,
   HouseholdProfile,
 } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
@@ -17,7 +18,8 @@ import { ComputedAnalytics } from "@/lib/ai/types";
 export function buildDeterministicPlan(
   snapshot: AirQualitySnapshot,
   profile: HouseholdProfile,
-  analytics: ComputedAnalytics
+  analytics: ComputedAnalytics,
+  fallbackReason?: FallbackReason
 ): AssistantPlanResponse {
   const { exposureWindows, commuteImpact, indoorAir } = analytics;
   const isHighPollution = snapshot.naqi > 200;
@@ -193,6 +195,7 @@ export function buildDeterministicPlan(
 
   return {
     mode: "deterministic_fallback",
+    ...(fallbackReason ? { fallbackReason } : {}),
     summary,
     morningRoutine: morningRecs,
     afternoonRoutine: afternoonRecs,

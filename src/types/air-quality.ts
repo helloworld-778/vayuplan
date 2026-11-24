@@ -207,8 +207,26 @@ export type AssistantMode = "ai" | "deterministic_fallback";
 
 export const AssistantModeSchema = z.enum(["ai", "deterministic_fallback"]);
 
+export type FallbackReason =
+  | "missing_api_key"
+  | "quota_exceeded"
+  | "model_not_found"
+  | "timeout"
+  | "invalid_json"
+  | "upstream_error";
+
+export const FallbackReasonSchema = z.enum([
+  "missing_api_key",
+  "quota_exceeded",
+  "model_not_found",
+  "timeout",
+  "invalid_json",
+  "upstream_error",
+]);
+
 export interface AssistantPlanResponse {
   mode: AssistantMode;
+  fallbackReason?: FallbackReason;
   summary: string;
   morningRoutine: ActionRecommendation[];
   afternoonRoutine: ActionRecommendation[];
@@ -220,6 +238,7 @@ export interface AssistantPlanResponse {
 
 export const AssistantPlanResponseSchema = z.object({
   mode: AssistantModeSchema,
+  fallbackReason: FallbackReasonSchema.optional(),
   summary: z.string().min(1),
   morningRoutine: z.array(ActionRecommendationSchema),
   afternoonRoutine: z.array(ActionRecommendationSchema),
