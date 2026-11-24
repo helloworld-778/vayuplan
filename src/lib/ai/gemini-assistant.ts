@@ -1,10 +1,9 @@
 /**
  * Grounded Gemini AI Engine for VayuPlan.
  *
- * Orchestrates Google Gemini using `@google/genai` with strict factual grounding
- * against verified Stage 2 environmental physics calculations and live CPCB/Open-Meteo telemetry.
- * Automatically falls back to deterministic mathematical planning upon quota exhaustion,
- * timeout, invalid output, or network failure, exposing safe non-secret diagnostics.
+ * Orchestrates Google Gemini using `@google/genai` with multi-model resilience cascade
+ * (`primary -> fallback models`), strict factual grounding against Stage 2 physics,
+ * and automatic deterministic mathematical fallback with safe non-secret diagnostics.
  */
 
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
@@ -18,11 +17,15 @@ import {
 } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
 import { buildDeterministicPlan } from "@/lib/ai/fallback-plan";
-import { getGeminiApiKey, getGeminiModel } from "@/lib/security/env";
+import {
+  getGeminiApiKey,
+  getGeminiCandidateModels,
+  getGeminiModel,
+} from "@/lib/security/env";
 import { MemoryCache } from "@/lib/security/cache";
 import { sanitizeString } from "@/lib/security/sanitize";
 
-const GEMINI_TIMEOUT_MS = 20000;
+const PER_ATTEMPT_TIMEOUT_MS = 10000;
 
 const DEFAULT_DISCLAIMER =
   "Disclaimer: VayuPlan provides AI-synthesized environmental risk-mitigation insights grounded in CPCB NAQI telemetry and exposure physics. It is not personal medical advice.";
@@ -37,12 +40,12 @@ export function clearPlanCache(): void {
 function getPlanCacheKey(
   snapshot: AirQualitySnapshot,
   profile: HouseholdProfile,
-  model: string
+  modelsKey: string
 ): string {
   const loc = snapshot.location.name.toLowerCase();
   const naqi = Math.round(snapshot.naqi / 5) * 5; // Group in bins of 5
   const profKey = `${profile.persona}_${profile.hasRespiratorySensitivity}_${profile.commuteDistanceKm}_${profile.currentCommuteMode}_${profile.maskType}_${profile.windowsState}_${profile.hasAirPurifier}_${profile.usesIncenseOrSolidFuel}`;
-  return `plan_${model}_${loc}_${naqi}_${profKey}`;
+  return `plan_${modelsKey}_${loc}_${naqi}_${profKey}`;
 }
 
 const BASE_GROUNDING_RULES = `You are VayuPlan's Expert Urban Air Quality Advisor for India (Google Prompt Wars Challenge 6).
@@ -206,7 +209,7 @@ function classifyGeminiError(err: unknown, sanitizedMessage: string): FallbackRe
   if (
     errObj?.status === 404 ||
     errObj?.code === 404 ||
-    /\b404\b|model.*not found|not found for api version|models\/.+ is not found|unsupported model/i.test(
+    /\b404\b|model[_\s]+not[_\s]+found|model.*not found|not found for api version|models\/.+ is not found|unsupported model/i.test(
       sanitizedMessage
     )
   ) {
@@ -214,6 +217,32 @@ function classifyGeminiError(err: unknown, sanitizedMessage: string): FallbackRe
   }
 
   return "upstream_error";
+}
+
+function isRetryableCascadeError(err: unknown, sanitizedMessage: string): boolean {
+  const errObj =
+    err && typeof err === "object"
+      ? (err as { name?: unknown; status?: unknown; code?: unknown })
+      : null;
+
+  if (errObj?.name === "AbortError") {
+    return true;
+  }
+
+  const numericStatus =
+    typeof errObj?.status === "number"
+      ? errObj.status
+      : typeof errObj?.code === "number"
+      ? errObj.code
+      : null;
+
+  if (numericStatus === 503 || numericStatus === 429 || numericStatus === 404) {
+    return true;
+  }
+
+  return /\b(503|429|404)\b|UNAVAILABLE|high\s+demand|RESOURCE[_\s]+EXHAUSTED|quota|rate[-_\s]?limit|too\s+many\s+requests|model[_\s]+not[_\s]+found|not\s+found|unsupported\s+model|abort(?:ed)?|timed?\s*out|timeout|ETIMEDOUT/i.test(
+    sanitizedMessage
+  );
 }
 
 /**
@@ -271,6 +300,79 @@ function extractResponseText(response: unknown): string {
   }
 
   return "";
+}
+
+export interface ModelCascadeParams {
+  ai: GoogleGenAI;
+  contents: string;
+  systemInstruction: string;
+  responseMimeType: string;
+  responseSchema: Schema;
+  contextLabel: "plan" | "chat";
+  apiKey: string;
+}
+
+export interface ModelCascadeResult {
+  rawText: string;
+  modelUsed: string;
+}
+
+/**
+ * Iterates through ordered Gemini candidate models with a 10s per-attempt timeout.
+ * Automatically cascades to the next model on retryable errors (503, 429, 404, timeout).
+ */
+async function generateWithModelCascade(
+  params: ModelCascadeParams
+): Promise<ModelCascadeResult> {
+  const candidates = getGeminiCandidateModels();
+  let lastError: unknown = null;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const model = candidates[i];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
+
+    try {
+      const response = await params.ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: {
+          systemInstruction: params.systemInstruction,
+          responseMimeType: params.responseMimeType,
+          responseSchema: params.responseSchema,
+          abortSignal: controller.signal,
+        },
+      });
+
+      const rawText = extractResponseText(response);
+      if (!rawText) {
+        throw new Error("Empty response text received from Gemini model.");
+      }
+
+      return { rawText, modelUsed: model };
+    } catch (err) {
+      lastError = err;
+      const sanitizedMsg = sanitizeErrorMessage(err, params.apiKey);
+      const hasMoreCandidates = i < candidates.length - 1;
+
+      if (hasMoreCandidates && isRetryableCascadeError(err, sanitizedMsg)) {
+        console.warn("[VayuPlan Gemini]", {
+          context: params.contextLabel,
+          model,
+          status: "cascading_to_next_model",
+          nextModel: candidates[i + 1],
+          error: sanitizedMsg,
+        });
+        continue;
+      }
+
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  throw lastError ?? new Error("All candidate Gemini models failed.");
 }
 
 /**
@@ -407,7 +509,10 @@ const PLAN_KEY_MAP: Record<string, string> = {
   disclaimer: "disclaimer",
 };
 
-function normalizePlanPayload(raw: unknown): Record<string, unknown> {
+function normalizePlanPayload(
+  raw: unknown,
+  modelUsed: string
+): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new InvalidJsonError("Plan payload must be a JSON object.");
   }
@@ -422,6 +527,7 @@ function normalizePlanPayload(raw: unknown): Record<string, unknown> {
 
   return {
     mode: "ai",
+    modelUsed,
     summary,
     morningRoutine: normalizeActionArray(mapped.morningRoutine),
     afternoonRoutine: normalizeActionArray(mapped.afternoonRoutine),
@@ -459,15 +565,16 @@ function normalizeChatPayload(raw: unknown): Record<string, unknown> {
 
 /**
  * Generates an AI-synthesized, grounded daily air quality action plan.
- * Returns deterministic fallback if Gemini is unconfigured, rate-limited, times out, or fails validation.
+ * Cascades across candidate models on 503/429/404/timeout before falling back cleanly.
  */
 export async function generatePersonalizedPlan(
   snapshot: AirQualitySnapshot,
   profile: HouseholdProfile,
   analytics: ComputedAnalytics
 ): Promise<AssistantPlanResponse> {
-  const model = getGeminiModel();
-  const cacheKey = getPlanCacheKey(snapshot, profile, model);
+  const candidates = getGeminiCandidateModels();
+  const primaryModel = getGeminiModel();
+  const cacheKey = getPlanCacheKey(snapshot, profile, candidates.join(","));
   const cached = planCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -477,7 +584,7 @@ export async function generatePersonalizedPlan(
   if (!apiKey) {
     console.error("[VayuPlan Gemini]", {
       context: "plan",
-      model,
+      model: primaryModel,
       fallbackReason: "missing_api_key",
       error: "GEMINI_API_KEY is unset or empty.",
     });
@@ -525,30 +632,23 @@ ${JSON.stringify(contextData, null, 2)}
 
 Generate a comprehensive JSON response adhering strictly to the AssistantPlanResponse schema with mode: "ai".`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let attemptedModel = primaryModel;
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-
-    const response = await ai.models.generateContent({
-      model,
+    const { rawText, modelUsed } = await generateWithModelCascade({
+      ai,
       contents: userPrompt,
-      config: {
-        systemInstruction: PLAN_SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: PLAN_RESPONSE_SCHEMA,
-        abortSignal: controller.signal,
-      },
+      systemInstruction: PLAN_SYSTEM_PROMPT,
+      responseMimeType: "application/json",
+      responseSchema: PLAN_RESPONSE_SCHEMA,
+      contextLabel: "plan",
+      apiKey,
     });
-
-    const rawText = extractResponseText(response);
-    if (!rawText) {
-      throw new Error("Empty response text received from Gemini model.");
-    }
+    attemptedModel = modelUsed;
 
     const parsedJson = parseJsonPayload(rawText);
-    const normalized = normalizePlanPayload(parsedJson);
+    const normalized = normalizePlanPayload(parsedJson, modelUsed);
     const validation = AssistantPlanResponseSchema.safeParse(normalized);
 
     if (validation.success) {
@@ -559,7 +659,7 @@ Generate a comprehensive JSON response adhering strictly to the AssistantPlanRes
     const schemaErrMsg = sanitizeErrorMessage(validation.error.message, apiKey);
     console.error("[VayuPlan Gemini]", {
       context: "plan",
-      model,
+      model: modelUsed,
       fallbackReason: "invalid_json",
       error: `Schema validation failed: ${schemaErrMsg}`,
     });
@@ -569,13 +669,12 @@ Generate a comprehensive JSON response adhering strictly to the AssistantPlanRes
     const fallbackReason = classifyGeminiError(err, sanitizedMsg);
     console.error("[VayuPlan Gemini]", {
       context: "plan",
-      model,
+      model: attemptedModel,
+      candidatesTried: candidates,
       fallbackReason,
       error: sanitizedMsg,
     });
     return buildDeterministicPlan(snapshot, profile, analytics, fallbackReason);
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -583,11 +682,13 @@ export interface GroundedQuestionResult {
   answer: string;
   mode: "ai" | "deterministic_fallback";
   fallbackReason?: FallbackReason;
+  modelUsed?: string;
   citedMetrics: string[];
 }
 
 /**
  * Answers a specific user query grounded strictly in live telemetry and computed physics.
+ * Cascades across candidate models on 503/429/404/timeout before falling back cleanly.
  */
 export async function answerGroundedQuestion(
   question: string,
@@ -605,7 +706,8 @@ export async function answerGroundedQuestion(
   }
 
   const apiKey = getGeminiApiKey();
-  const model = getGeminiModel();
+  const candidates = getGeminiCandidateModels();
+  const primaryModel = getGeminiModel();
 
   const citedMetrics: string[] = [
     `Current NAQI: ${snapshot.naqi} (${snapshot.category})`,
@@ -635,7 +737,7 @@ export async function answerGroundedQuestion(
   if (!apiKey) {
     console.error("[VayuPlan Gemini]", {
       context: "chat",
-      model,
+      model: primaryModel,
       fallbackReason: "missing_api_key",
       error: "GEMINI_API_KEY is unset or empty.",
     });
@@ -655,32 +757,23 @@ Live context:
 
 Provide a concise (2-4 sentences), factual, and directly actionable answer citing these real numbers.`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let attemptedModel = primaryModel;
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-
-    const response = await ai.models.generateContent({
-      model,
+    const { rawText, modelUsed } = await generateWithModelCascade({
+      ai,
       contents: prompt,
-      config: {
-        systemInstruction: CHAT_SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: CHAT_RESPONSE_SCHEMA,
-        abortSignal: controller.signal,
-      },
+      systemInstruction: CHAT_SYSTEM_PROMPT,
+      responseMimeType: "application/json",
+      responseSchema: CHAT_RESPONSE_SCHEMA,
+      contextLabel: "chat",
+      apiKey,
     });
-
-    const rawText = extractResponseText(response);
-    if (!rawText) {
-      throw new Error("Empty answer received from Gemini model.");
-    }
+    attemptedModel = modelUsed;
 
     const cleaned = stripCodeFences(rawText);
 
-    // Handle structured JSON responses cleanly (with fence/key normalization),
-    // while still supporting direct plain-text prose responses gracefully.
     if (cleaned.startsWith("{") || cleaned.startsWith("[")) {
       const parsedJson = parseJsonPayload(rawText);
       const normalized = normalizeChatPayload(parsedJson);
@@ -695,6 +788,7 @@ Provide a concise (2-4 sentences), factual, and directly actionable answer citin
       return {
         answer: validation.data.answer,
         mode: "ai",
+        modelUsed,
         citedMetrics,
       };
     }
@@ -706,6 +800,7 @@ Provide a concise (2-4 sentences), factual, and directly actionable answer citin
           return {
             answer: unwrapped.trim(),
             mode: "ai",
+            modelUsed,
             citedMetrics,
           };
         }
@@ -718,6 +813,7 @@ Provide a concise (2-4 sentences), factual, and directly actionable answer citin
       return {
         answer: cleaned,
         mode: "ai",
+        modelUsed,
         citedMetrics,
       };
     }
@@ -728,12 +824,11 @@ Provide a concise (2-4 sentences), factual, and directly actionable answer citin
     const fallbackReason = classifyGeminiError(err, sanitizedMsg);
     console.error("[VayuPlan Gemini]", {
       context: "chat",
-      model,
+      model: attemptedModel,
+      candidatesTried: candidates,
       fallbackReason,
       error: sanitizedMsg,
     });
     return buildFallbackChat(fallbackReason);
-  } finally {
-    clearTimeout(timeoutId);
   }
 }

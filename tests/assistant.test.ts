@@ -9,7 +9,11 @@ import { buildDeterministicPlan } from "@/lib/ai/fallback-plan";
 import { POST as planRoute } from "@/app/api/assistant/plan/route";
 import { POST as chatRoute } from "@/app/api/assistant/chat/route";
 import { GET as healthRoute } from "@/app/api/health/route";
-import { getGeminiModel } from "@/lib/security/env";
+import {
+  getGeminiCandidateModels,
+  getGeminiFallbackModels,
+  getGeminiModel,
+} from "@/lib/security/env";
 import {
   AirQualitySnapshot,
   HouseholdProfile,
@@ -96,6 +100,7 @@ describe("Grounded AI Assistant & API Routes", () => {
     globalRateLimiter.clear();
     process.env.GEMINI_API_KEY = "test_gemini_secret_key_12345";
     delete process.env.GEMINI_MODEL;
+    delete process.env.GEMINI_FALLBACK_MODELS;
     delete process.env.WAQI_API_TOKEN;
 
     const exposureWindows = optimizeExposureWindows(
@@ -122,15 +127,144 @@ describe("Grounded AI Assistant & API Routes", () => {
     vi.unstubAllGlobals();
   });
 
-  // ─── Model Default & Env Diagnostics ────────────────────────────────
-  it("defaults GEMINI_MODEL to gemini-3.5-flash-lite when unset", () => {
+  // ─── Model Default & Candidate Cascade Diagnostics ──────────────────
+  it("defaults GEMINI_MODEL to gemini-3.5-flash-lite and builds deduplicated cascade candidates", () => {
     expect(getGeminiModel()).toBe("gemini-3.5-flash-lite");
+    expect(getGeminiFallbackModels()).toEqual([
+      "gemini-3.6-flash",
+      "gemini-2.5-flash-lite",
+    ]);
+    expect(getGeminiCandidateModels()).toEqual([
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash",
+      "gemini-2.5-flash-lite",
+    ]);
 
     process.env.GEMINI_MODEL = "   ";
     expect(getGeminiModel()).toBe("gemini-3.5-flash-lite");
 
-    process.env.GEMINI_MODEL = "gemini-4-hydrogen";
-    expect(getGeminiModel()).toBe("gemini-4-hydrogen");
+    process.env.GEMINI_MODEL = "gemini-3.6-flash";
+    process.env.GEMINI_FALLBACK_MODELS = "gemini-3.6-flash, gemini-4-hydrogen , ";
+    expect(getGeminiFallbackModels()).toEqual([
+      "gemini-3.6-flash",
+      "gemini-4-hydrogen",
+    ]);
+    expect(getGeminiCandidateModels()).toEqual([
+      "gemini-3.6-flash",
+      "gemini-4-hydrogen",
+    ]);
+  });
+
+  // ─── Multi-Model Cascade on 503/429/404/Timeout ─────────────────────
+  it("cascades to model #2 when model #1 throws 503 UNAVAILABLE and records modelUsed", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const planPayload = {
+      mode: "ai",
+      summary: "Resilient AI plan served by fallback model #2.",
+      morningRoutine: [
+        {
+          title: "Mask Protection",
+          timeframe: "08:00 AM",
+          action: "Use N95 mask.",
+          whyMechanism: "Filtration blocks fine particles.",
+          directImpact: "Saves 40 µg inhaled PM2.5.",
+          effortLevel: "low_cost",
+        },
+      ],
+      afternoonRoutine: [],
+      eveningRoutine: [],
+      indoorHacks: [],
+      sustainableAlternatives: [],
+      disclaimer: "Environmental advisory only.",
+    };
+
+    // Plan cascade: model #1 fails with 503 UNAVAILABLE, model #2 succeeds
+    mockGenerateContent
+      .mockRejectedValueOnce(
+        new Error(
+          "503 UNAVAILABLE: This model is currently experiencing high demand at ?key=test_gemini_secret_key_12345"
+        )
+      )
+      .mockResolvedValueOnce({
+        text: JSON.stringify(planPayload),
+      });
+
+    const planResult = await generatePersonalizedPlan(
+      { ...sampleSnapshot, location: { ...sampleSnapshot.location, name: "Vasant Kunj" } },
+      sampleProfile,
+      analytics
+    );
+
+    expect(planResult.mode).toBe("ai");
+    expect(planResult.modelUsed).toBe("gemini-3.6-flash");
+    expect(planResult.fallbackReason).toBeUndefined();
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    expect(mockGenerateContent.mock.calls[0][0].model).toBe("gemini-3.5-flash-lite");
+    expect(mockGenerateContent.mock.calls[1][0].model).toBe("gemini-3.6-flash");
+
+    const warnLogs = JSON.stringify(warnSpy.mock.calls);
+    expect(warnLogs).toContain("[VayuPlan Gemini]");
+    expect(warnLogs).not.toContain("test_gemini_secret_key_12345");
+
+    // Chat cascade: model #1 fails with 503, model #2 succeeds
+    mockGenerateContent.mockReset();
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error("503 UNAVAILABLE: high demand"))
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          answer: "Use an N95 mask in Vasant Kunj where NAQI is 280.",
+        }),
+      });
+
+    const chatResult = await answerGroundedQuestion(
+      "Should I wear a mask?",
+      sampleSnapshot,
+      sampleProfile,
+      analytics
+    );
+
+    expect(chatResult.mode).toBe("ai");
+    expect(chatResult.modelUsed).toBe("gemini-3.6-flash");
+    expect(chatResult.fallbackReason).toBeUndefined();
+    expect(chatResult.answer).toContain("N95 mask");
+  });
+
+  it("returns deterministic_fallback with fallbackReason: 'upstream_error' when all models fail with 503", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockGenerateContent.mockRejectedValue(
+      new Error("503 UNAVAILABLE: This model is currently experiencing high demand.")
+    );
+
+    const planResult = await generatePersonalizedPlan(
+      { ...sampleSnapshot, location: { ...sampleSnapshot.location, name: "Pitampura" } },
+      sampleProfile,
+      analytics
+    );
+
+    expect(planResult.mode).toBe("deterministic_fallback");
+    expect(planResult.fallbackReason).toBe("upstream_error");
+    expect(planResult.modelUsed).toBeUndefined();
+    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+
+    mockGenerateContent.mockClear();
+    const chatResult = await answerGroundedQuestion(
+      "Is it safe to commute?",
+      sampleSnapshot,
+      sampleProfile,
+      analytics
+    );
+
+    expect(chatResult.mode).toBe("deterministic_fallback");
+    expect(chatResult.fallbackReason).toBe("upstream_error");
+    expect(chatResult.modelUsed).toBeUndefined();
+    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[VayuPlan Gemini]",
+      expect.objectContaining({ fallbackReason: "upstream_error" })
+    );
   });
 
   // ─── Gemini Valid JSON Path (mode: 'ai') ────────────────────────────
@@ -166,6 +300,7 @@ describe("Grounded AI Assistant & API Routes", () => {
     );
 
     expect(result.mode).toBe("ai");
+    expect(result.modelUsed).toBe("gemini-3.5-flash-lite");
     expect(result.fallbackReason).toBeUndefined();
     expect(result.summary).toContain("Grounded AI plan");
     expect(result.morningRoutine[0].title).toBe("Wear N95 for Morning Drive");
@@ -271,8 +406,9 @@ describe("Grounded AI Assistant & API Routes", () => {
   });
 
   it("reports fallbackReason: 'quota_exceeded' and redacts API key from server logs", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockGenerateContent.mockRejectedValueOnce(
+    mockGenerateContent.mockRejectedValue(
       new Error(
         "429 Resource has been exhausted (e.g. check quota) at https://generativelanguage.googleapis.com?key=test_gemini_secret_key_12345"
       )
@@ -295,10 +431,11 @@ describe("Grounded AI Assistant & API Routes", () => {
   });
 
   it("reports fallbackReason: 'model_not_found', 'timeout', and 'invalid_json'", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // 1. model_not_found
-    mockGenerateContent.mockRejectedValueOnce(
+    // 1. model_not_found across all candidates
+    mockGenerateContent.mockRejectedValue(
       new Error("404 models/bad-model is not found for API version v1beta")
     );
     const modelErrPlan = await generatePersonalizedPlan(
@@ -309,10 +446,10 @@ describe("Grounded AI Assistant & API Routes", () => {
     expect(modelErrPlan.mode).toBe("deterministic_fallback");
     expect(modelErrPlan.fallbackReason).toBe("model_not_found");
 
-    // 2. timeout
+    // 2. timeout across all candidates
     const abortErr = new Error("The operation was aborted");
     abortErr.name = "AbortError";
-    mockGenerateContent.mockRejectedValueOnce(abortErr);
+    mockGenerateContent.mockRejectedValue(abortErr);
     const timeoutPlan = await generatePersonalizedPlan(
       { ...sampleSnapshot, location: { ...sampleSnapshot.location, name: "Gurugram" } },
       sampleProfile,
@@ -322,6 +459,7 @@ describe("Grounded AI Assistant & API Routes", () => {
     expect(timeoutPlan.fallbackReason).toBe("timeout");
 
     // 3. invalid_json
+    mockGenerateContent.mockReset();
     mockGenerateContent.mockResolvedValueOnce({
       text: "```json\n{ malformed json without closing brace",
     });

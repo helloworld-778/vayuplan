@@ -227,6 +227,7 @@ export const FallbackReasonSchema = z.enum([
 export interface AssistantPlanResponse {
   mode: AssistantMode;
   fallbackReason?: FallbackReason;
+  modelUsed?: string;
   summary: string;
   morningRoutine: ActionRecommendation[];
   afternoonRoutine: ActionRecommendation[];
@@ -239,6 +240,7 @@ export interface AssistantPlanResponse {
 export const AssistantPlanResponseSchema = z.object({
   mode: AssistantModeSchema,
   fallbackReason: FallbackReasonSchema.optional(),
+  modelUsed: z.string().min(1).optional(),
   summary: z.string().min(1),
   morningRoutine: z.array(ActionRecommendationSchema),
   afternoonRoutine: z.array(ActionRecommendationSchema),

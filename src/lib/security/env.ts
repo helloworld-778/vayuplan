@@ -22,10 +22,49 @@ export function hasGeminiApiKey(): boolean {
   return getGeminiApiKey() !== null;
 }
 
+const DEFAULT_GEMINI_FALLBACK_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-2.5-flash-lite",
+];
+
 /** Gemini model identifier. Defaults to gemini-3.5-flash-lite. */
 export function getGeminiModel(): string {
   const model = optionalEnv("GEMINI_MODEL").trim();
   return model || "gemini-3.5-flash-lite";
+}
+
+/**
+ * Ordered list of fallback Gemini models read from optional comma-separated
+ * GEMINI_FALLBACK_MODELS env var, defaulting to ['gemini-3.6-flash', 'gemini-2.5-flash-lite'].
+ */
+export function getGeminiFallbackModels(): string[] {
+  const raw = optionalEnv("GEMINI_FALLBACK_MODELS").trim();
+  if (!raw) {
+    return [...DEFAULT_GEMINI_FALLBACK_MODELS];
+  }
+  const parsed = raw
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+
+  return parsed.length > 0 ? parsed : [...DEFAULT_GEMINI_FALLBACK_MODELS];
+}
+
+/**
+ * Deduplicated ordered candidate model list: [primaryModel, ...fallbackModels].
+ */
+export function getGeminiCandidateModels(): string[] {
+  const raw = [getGeminiModel(), ...getGeminiFallbackModels()];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  for (const model of raw) {
+    if (model && !seen.has(model)) {
+      seen.add(model);
+      candidates.push(model);
+    }
+  }
+  return candidates;
 }
 
 /** WAQI API token — returns string if configured, or null if unset. */
