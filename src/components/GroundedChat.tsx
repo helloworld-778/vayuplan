@@ -163,12 +163,12 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
                     {m.mode === "ai" ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#1B4F72]">
                         <Sparkles className="w-3 h-3 text-[#2980B9]" />
-                        Gemini 2.5 Flash
+                        Gemini AI
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#2C3E50]">
                         <Cpu className="w-3 h-3 text-[#34495E]" />
-                        Deterministic Fallback
+                        Deterministic Physics Fallback
                       </span>
                     )}
                     <span className="text-[10px] text-[#7A8290] ml-auto">

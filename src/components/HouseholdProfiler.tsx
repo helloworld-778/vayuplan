@@ -259,28 +259,51 @@ export function HouseholdProfiler({
                   max="60"
                   step="1"
                   value={draft.commuteDistanceKm}
+                  disabled={draft.currentCommuteMode === "work_from_home"}
                   onChange={(e) =>
                     updateDraft("commuteDistanceKm", parseInt(e.target.value, 10))
                   }
-                  className="w-full accent-[#14181F] cursor-pointer"
+                  className="w-full accent-[#14181F] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="One-way commute distance in kilometers"
                 />
                 <div className="flex justify-between text-[10px] text-[#7A8290] mt-1 font-mono">
                   <span>0 km (WFH)</span>
                   <span>30 km</span>
                   <span>60 km</span>
                 </div>
+                {draft.currentCommuteMode === "work_from_home" && (
+                  <p className="text-[10px] text-[#5E6470] mt-1">
+                    Commute disabled for remote / work-from-home routine (0 km).
+                  </p>
+                )}
               </div>
 
               {/* Commute Mode */}
               <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE]">
-                <label className="text-xs font-medium text-[#2B303B] block mb-1.5">
+                <label htmlFor="commute-mode-select" className="text-xs font-medium text-[#2B303B] block mb-1.5">
                   Primary Commute Mode
                 </label>
                 <select
+                  id="commute-mode-select"
                   value={draft.currentCommuteMode}
-                  onChange={(e) =>
-                    updateDraft("currentCommuteMode", e.target.value as CommuteMode)
-                  }
+                  onChange={(e) => {
+                    const mode = e.target.value as CommuteMode;
+                    if (mode === "work_from_home") {
+                      setDraft((prev) => ({
+                        ...prev,
+                        currentCommuteMode: mode,
+                        commuteDistanceKm: 0,
+                      }));
+                      setHasChanges(true);
+                    } else {
+                      setDraft((prev) => ({
+                        ...prev,
+                        currentCommuteMode: mode,
+                        commuteDistanceKm: prev.commuteDistanceKm === 0 ? 10 : prev.commuteDistanceKm,
+                      }));
+                      setHasChanges(true);
+                    }
+                  }}
                   className="w-full py-1.5 px-2 bg-[#FFFFFF] border border-[#DDD9CE] rounded text-xs text-[#14181F] font-medium focus:outline-none focus:border-[#14181F]"
                 >
                   {COMMUTE_MODES.map((m) => (

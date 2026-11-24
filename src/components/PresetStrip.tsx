@@ -37,7 +37,9 @@ export function PresetStrip({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onSelectPreset(preset)}
-                className={`text-xs px-2.5 py-1 rounded border transition-all text-left whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                title={preset.description}
+                aria-label={`${preset.title}: ${preset.description}`}
+                className={`text-xs px-2.5 py-1 rounded border transition-all text-left whitespace-nowrap shrink-0 flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#14181F] focus-visible:outline-none ${
                   isActive
                     ? "bg-[#14181F] text-[#FFFFFF] border-[#14181F] shadow-xs font-semibold"
                     : "bg-[#FFFFFF] text-[#2B303B] border-[#DDD9CE] hover:border-[#14181F] hover:bg-[#F2EFE9]"

@@ -21,18 +21,23 @@ export function HourlyExposureChart({
   // Take up to 36 hours for clear temporal resolution
   const points = (hourlyForecast || []).slice(0, 36);
 
-  if (points.length < 2) {
+  if (points.length === 0) {
     return (
-      <div className="p-8 text-center text-xs text-[#7A8290] border border-[#DDD9CE] rounded bg-[#FAF9F6]">
-        Insufficient hourly forecast data to render exposure chart.
+      <div className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg p-5">
+        <div className="sr-only" aria-live="polite">
+          No hourly forecast data available.
+        </div>
+        <p className="text-xs text-[#7A8290] text-center py-8">
+          No hourly forecast data available.
+        </p>
       </div>
     );
   }
 
-  // Find max values for scaling
+  // Find max values for scaling (guard against flat 0 or negative values)
   const maxPm25 = Math.max(
-    ...points.map((p) => p.pm25 || 0),
-    120 // minimum chart ceiling
+    ...points.map((p) => (typeof p.pm25 === "number" && !isNaN(p.pm25) ? p.pm25 : 0)),
+    120 // minimum chart ceiling ensures divisor is always >= 120 (never 0 or NaN)
   );
 
   // SVG Chart Geometry
@@ -46,13 +51,24 @@ export function HourlyExposureChart({
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  // Calculate coordinates for each point
+  // Calculate coordinates for each point (guard single-point to avoid divide by zero)
   const coords = points.map((p, idx) => {
-    const x = paddingLeft + (idx / (points.length - 1)) * chartWidth;
-    const pm25Val = p.pm25 || 0;
+    const x =
+      points.length > 1
+        ? paddingLeft + (idx / (points.length - 1)) * chartWidth
+        : paddingLeft + chartWidth / 2;
+    const pm25Val = typeof p.pm25 === "number" && !isNaN(p.pm25) ? p.pm25 : 0;
     const y = paddingTop + chartHeight - (pm25Val / maxPm25) * chartHeight;
     const hour = parseHourFromIso(p.timeIso);
-    return { x, y, pm25: pm25Val, naqi: p.estimatedNaqi, category: p.category, hour, timeIso: p.timeIso };
+    return {
+      x: isFinite(x) ? x : paddingLeft,
+      y: isFinite(y) ? y : paddingTop + chartHeight,
+      pm25: pm25Val,
+      naqi: p.estimatedNaqi ?? 0,
+      category: p.category ?? "Good",
+      hour,
+      timeIso: p.timeIso,
+    };
   });
 
   // Construct SVG path string
@@ -64,21 +80,27 @@ export function HourlyExposureChart({
     ""
   );
 
-  const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(
-    1
-  )} ${(paddingTop + chartHeight).toFixed(1)} L ${coords[0].x.toFixed(
-    1
-  )} ${(paddingTop + chartHeight).toFixed(1)} Z`;
+  const areaPath =
+    coords.length > 1
+      ? `${linePath} L ${coords[coords.length - 1].x.toFixed(
+          1
+        )} ${(paddingTop + chartHeight).toFixed(1)} L ${coords[0].x.toFixed(
+          1
+        )} ${(paddingTop + chartHeight).toFixed(1)} Z`
+      : "";
 
   // Helper to find X span for a window
   const getWindowSpan = (win: RollingWindow | null) => {
-    if (!win) return null;
+    if (!win || points.length === 0) return null;
     const startIndex = points.findIndex((p) => p.timeIso === win.startTimeIso);
-    if (startIndex === -1) return null;
-    const endIndex = Math.min(startIndex + 1, points.length - 1);
+    if (startIndex === -1 || !coords[startIndex]) return null;
+    const endIndex = Math.min(startIndex + 1, coords.length - 1);
     const x1 = coords[startIndex].x - 10;
     const x2 = coords[endIndex].x + 10;
-    return { x: Math.max(paddingLeft, x1), width: Math.max(24, x2 - x1) };
+    const spanX = Math.max(paddingLeft, x1);
+    const spanWidth = Math.max(24, x2 - x1);
+    if (!isFinite(spanX) || !isFinite(spanWidth)) return null;
+    return { x: spanX, width: spanWidth };
   };
 
   const bestSpan = getWindowSpan(bestWindow);

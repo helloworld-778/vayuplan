@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   AirQualitySnapshot,
   AssistantPlanResponse,
@@ -36,9 +36,26 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
-  // Fetch telemetry for location
+  const activeTelemetryAbortRef = useRef<AbortController | null>(null);
+  const activePlanAbortRef = useRef<AbortController | null>(null);
+
+  // Cleanup in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      activeTelemetryAbortRef.current?.abort();
+      activePlanAbortRef.current?.abort();
+    };
+  }, []);
+
+  // Fetch telemetry for location with race condition protection
   const loadTelemetry = useCallback(
     async (loc: ResolvedLocation) => {
+      if (activeTelemetryAbortRef.current) {
+        activeTelemetryAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      activeTelemetryAbortRef.current = controller;
+
       setIsTelemetryLoading(true);
       setErrorMessage(null);
       setLiveAnnouncement(`Fetching live air quality telemetry for ${loc.name}...`);
@@ -47,7 +64,8 @@ export default function Home() {
         const res = await fetch(
           `/api/air-quality?lat=${loc.lat}&lon=${loc.lon}&name=${encodeURIComponent(
             loc.name
-          )}&state=${encodeURIComponent(loc.state)}`
+          )}&state=${encodeURIComponent(loc.state)}`,
+          { signal: controller.signal }
         );
 
         if (!res.ok) {
@@ -62,20 +80,31 @@ export default function Home() {
         );
         return data;
       } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          return null;
+        }
         const msg = (err as Error).message || "Atmospheric telemetry service unreachable.";
         setErrorMessage(msg);
         setLiveAnnouncement(`Error: ${msg}`);
         return null;
       } finally {
-        setIsTelemetryLoading(false);
+        if (activeTelemetryAbortRef.current === controller) {
+          setIsTelemetryLoading(false);
+        }
       }
     },
     []
   );
 
-  // Generate / update plan from snapshot + profile
+  // Generate / update plan from snapshot + profile with race condition protection
   const loadPlan = useCallback(
     async (curSnapshot: AirQualitySnapshot, curProfile: HouseholdProfile) => {
+      if (activePlanAbortRef.current) {
+        activePlanAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      activePlanAbortRef.current = controller;
+
       setIsPlanLoading(true);
       setLiveAnnouncement("Updating personalized plan and environmental calculations...");
 
@@ -87,6 +116,7 @@ export default function Home() {
             snapshot: curSnapshot,
             profile: curProfile,
           }),
+          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -99,9 +129,14 @@ export default function Home() {
         setAnalytics(data.analytics);
         setLiveAnnouncement("Personalized air quality plan updated successfully.");
       } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          return;
+        }
         console.warn("Plan generation fallback note:", err);
       } finally {
-        setIsPlanLoading(false);
+        if (activePlanAbortRef.current === controller) {
+          setIsPlanLoading(false);
+        }
       }
     },
     []
@@ -289,7 +324,7 @@ export default function Home() {
           </div>
 
           <div className="text-[11px] text-[#7A8290]">
-            Ground Station Telemetry via WAQI & Open-Meteo CAMS • Grounded AI via Gemini 2.5 Flash
+            Ground Station Telemetry via WAQI & Open-Meteo CAMS • Grounded AI via Gemini
           </div>
         </div>
       </footer>

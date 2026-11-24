@@ -55,6 +55,12 @@ export function WorkspaceTabs({
       e.preventDefault();
       const prevIndex = (index - 1 + TABS.length) % TABS.length;
       setActiveTab(TABS[prevIndex].key);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActiveTab(TABS[0].key);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActiveTab(TABS[TABS.length - 1].key);
     }
   };
 

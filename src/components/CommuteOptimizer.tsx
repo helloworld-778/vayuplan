@@ -150,7 +150,7 @@ export function CommuteOptimizer({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left" role="table">
+          <table className="w-full text-xs text-left min-w-[620px]" role="table">
             <thead className="bg-[#FAF9F6] border-b border-[#EAE7DF] text-[#6E7582] font-mono uppercase text-[10px]">
               <tr>
                 <th className="py-3 px-4">Transit Mode</th>

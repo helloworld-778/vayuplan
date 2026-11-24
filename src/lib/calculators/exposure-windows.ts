@@ -174,7 +174,7 @@ export function optimizeExposureWindows(
       morning: {
         daypart: "morning",
         label: "Morning",
-        hoursRange: "06:00 – 12:00",
+        hoursRange: "06:00 – 11:59",
         avgPm25: null,
         maxNaqi: 0,
         dominantCategory: "Good",
@@ -185,7 +185,7 @@ export function optimizeExposureWindows(
       afternoon: {
         daypart: "afternoon",
         label: "Afternoon",
-        hoursRange: "12:00 – 17:00",
+        hoursRange: "12:00 – 16:59",
         avgPm25: null,
         maxNaqi: 0,
         dominantCategory: "Good",
@@ -196,7 +196,7 @@ export function optimizeExposureWindows(
       evening: {
         daypart: "evening",
         label: "Evening",
-        hoursRange: "17:00 – 22:00",
+        hoursRange: "17:00 – 21:59",
         avgPm25: null,
         maxNaqi: 0,
         dominantCategory: "Good",
@@ -207,7 +207,7 @@ export function optimizeExposureWindows(
       night: {
         daypart: "night",
         label: "Night",
-        hoursRange: "22:00 – 06:00",
+        hoursRange: "22:00 – 05:59",
         avgPm25: null,
         maxNaqi: 0,
         dominantCategory: "Good",
@@ -243,10 +243,10 @@ export function optimizeExposureWindows(
   }
 
   const dayparts: Record<DaypartName, DaypartSummary> = {
-    morning: summarizeDaypart("morning", "Morning", "06:00 – 12:00", daypartGroups.morning, profile),
-    afternoon: summarizeDaypart("afternoon", "Afternoon", "12:00 – 17:00", daypartGroups.afternoon, profile),
-    evening: summarizeDaypart("evening", "Evening", "17:00 – 22:00", daypartGroups.evening, profile),
-    night: summarizeDaypart("night", "Night", "22:00 – 06:00", daypartGroups.night, profile),
+    morning: summarizeDaypart("morning", "Morning", "06:00 – 11:59", daypartGroups.morning, profile),
+    afternoon: summarizeDaypart("afternoon", "Afternoon", "12:00 – 16:59", daypartGroups.afternoon, profile),
+    evening: summarizeDaypart("evening", "Evening", "17:00 – 21:59", daypartGroups.evening, profile),
+    night: summarizeDaypart("night", "Night", "22:00 – 05:59", daypartGroups.night, profile),
   };
 
   // 2. Compute 2-hour rolling windows

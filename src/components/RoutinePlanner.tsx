@@ -97,7 +97,7 @@ export function RoutinePlanner({
             {isAi ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#EBF5FB] text-[#1B4F72] border border-[#AED6F1] text-xs font-bold font-mono">
                 <Sparkles className="w-3.5 h-3.5 text-[#2980B9]" />
-                Gemini 2.5 Flash Grounded AI
+                Gemini AI
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F4F6F6] text-[#2C3E50] border border-[#D5D8DC] text-xs font-bold font-mono">

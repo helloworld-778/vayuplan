@@ -20,7 +20,7 @@ export const EVALUATOR_PRESETS: Record<string, EvaluatorPreset> = {
     id: "delhi-commuter",
     title: "Delhi Corporate Commuter",
     description:
-      "Working professional in New Delhi facing severe winter inversion and heavy traffic exhaust during daily car commutes.",
+      "Working professional in New Delhi commuting 14 km via petrol car; manages daily peak traffic exhaust.",
     location: {
       name: "New Delhi",
       state: "Delhi",

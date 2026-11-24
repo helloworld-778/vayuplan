@@ -38,7 +38,7 @@ export function TopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced search
+  // Debounced search with AbortController for race condition protection
   useEffect(() => {
     if (!query || query.trim().length < 2) {
       setSuggestions([]);
@@ -46,10 +46,13 @@ export function TopBar({
       return;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/locations?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(query.trim())}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setSuggestions(data.results || []);
@@ -57,13 +60,18 @@ export function TopBar({
           setHighlightedIndex(-1);
         }
       } catch (err) {
-        console.warn("Location search failed:", err);
+        if ((err as Error).name !== "AbortError") {
+          console.warn("Location search failed:", err);
+        }
       } finally {
         setIsSearching(false);
       }
     }, 280);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   // GPS geolocation handler
