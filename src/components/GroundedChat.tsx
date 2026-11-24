@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   AirQualitySnapshot,
   FallbackReason,
@@ -12,16 +12,13 @@ import {
   Loader2,
   Sparkles,
   Cpu,
-  HelpCircle,
   Tag,
+  X,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 
-interface GroundedChatProps {
-  snapshot: AirQualitySnapshot;
-  profile: HouseholdProfile;
-}
-
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   sender: "user" | "assistant";
   text: string;
@@ -31,36 +28,98 @@ interface ChatMessage {
   timestamp: string;
 }
 
-export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
+interface GroundedChatProps {
+  snapshot: AirQualitySnapshot;
+  profile: HouseholdProfile;
+  messages?: ChatMessage[];
+  onMessagesChange?: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  prefillRequest?: { text: string; seq: number } | null;
+  onCloseDrawer?: () => void;
+  className?: string;
+}
+
+export function GroundedChat({
+  snapshot,
+  profile,
+  messages: controlledMessages,
+  onMessagesChange,
+  prefillRequest = null,
+  onCloseDrawer,
+  className = "",
+}: GroundedChatProps) {
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [internalMessages, setInternalMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFailedQuestion, setLastFailedQuestion] = useState<string | null>(
+    null
+  );
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const threadEndRef = useRef<HTMLDivElement>(null);
+
+  const messages = controlledMessages ?? internalMessages;
+  const updateMessages = onMessagesChange ?? setInternalMessages;
 
   const city = snapshot.location.name;
+  const cleanPersona = profile.persona.replaceAll("_", " ");
 
-  // 4 dynamic starter questions tailored to city & persona
+  useEffect(() => {
+    if (prefillRequest && prefillRequest.seq > 0) {
+      setQuestion(prefillRequest.text.slice(0, 400));
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [prefillRequest]);
+
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      typeof threadEndRef.current?.scrollIntoView === "function"
+    ) {
+      const prefersReduced =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      threadEndRef.current.scrollIntoView({
+        behavior: prefersReduced ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
+  }, [messages.length]);
+
   const starterQuestions = [
-    `Is it safe for a ${profile.persona.replace("_", " ")} to go outside at 6 PM in ${city}?`,
+    `Is it safe for a ${cleanPersona} to go outside at 6 PM in ${city}?`,
     `How much PM2.5 does an N95 mask save on my ${profile.commuteDistanceKm} km commute?`,
     `Should I open windows or keep them sealed today in ${city}?`,
     "What common indoor air pollution myth should I avoid?",
   ];
 
-  const handleSubmit = async (textToSend: string) => {
+  const handleSubmit = async (
+    textToSend: string,
+    opts?: { isRetry?: boolean }
+  ) => {
     const trimmed = textToSend.trim();
     if (!trimmed || isLoading) return;
 
     setError(null);
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      sender: "user",
-      text: trimmed,
-      timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-    };
+    setLastFailedQuestion(null);
 
-    setMessages((prev) => [...prev, userMsg]);
-    setQuestion("");
+    if (!opts?.isRetry) {
+      const userMsg: ChatMessage = {
+        id: `u-${Date.now()}`,
+        sender: "user",
+        text: trimmed,
+        timestamp: new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      updateMessages((prev) => [...prev, userMsg]);
+      setQuestion("");
+    }
+
     setIsLoading(true);
 
     try {
@@ -87,62 +146,117 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
         mode: data.mode,
         fallbackReason: data.fallbackReason,
         citedMetrics: data.citedMetrics,
-        timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
 
-      setMessages((prev) => [...prev, botMsg]);
+      updateMessages((prev) => [...prev, botMsg]);
     } catch (err) {
       setError((err as Error).message || "Chat service error.");
+      setLastFailedQuestion(trimmed);
+      if (!opts?.isRetry && !question.trim()) {
+        setQuestion(trimmed);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg overflow-hidden shadow-xs flex flex-col min-h-[500px]">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-[#EAE7DF] bg-[#FAF9F6] flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <MessageSquare className="w-4 h-4 text-[#14181F]" />
-          <div>
-            <h3 className="text-sm font-bold text-[#14181F]">
-              Ask VayuPlan — Grounded Environmental Advisor
-            </h3>
-            <p className="text-xs text-[#5E6470]">
-              Cites verified Stage 2 telemetry & envelope physics in real-time
+    <div
+      className={`bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl elevation-2 overflow-hidden flex flex-col min-h-[380px] lg:min-h-0 ${className}`}
+    >
+      {/* Stratospheric Navy Header Anchor */}
+      <div className="px-4 py-3.5 bg-[#0F172A] text-[#FFFFFF] flex items-center justify-between gap-2 border-b border-[#1E293B]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-8 h-8 rounded-lg bg-[#1E293B] border border-[#334155] flex items-center justify-center shrink-0">
+            <MessageSquare
+              className="w-4 h-4 text-[#93C5FD]"
+              aria-hidden="true"
+            />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-sm font-semibold tracking-tight text-[#FFFFFF] truncate">
+              Ask VayuPlan
+            </h2>
+            <p className="text-xs text-[#CBD5E1] truncate">
+              Grounded AI Copilot
             </p>
           </div>
         </div>
-        <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#EFECE6] border border-[#DDD9CE] text-[#474D58]">
-          {city} • NAQI {snapshot.naqi}
-        </span>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-xs font-mono tabular-nums px-2.5 py-1 rounded bg-[#1E293B] border border-[#334155] text-[#E2E8F0]">
+            {city} · NAQI {snapshot.naqi}
+          </span>
+
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                updateMessages([]);
+                setError(null);
+                setLastFailedQuestion(null);
+              }}
+              aria-label="Clear chat conversation"
+              title="Clear chat"
+              className="min-h-[36px] px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#E2E8F0] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#93C5FD]"
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          )}
+
+          {onCloseDrawer && (
+            <button
+              type="button"
+              onClick={onCloseDrawer}
+              aria-label="Close Ask VayuPlan Copilot"
+              className="min-h-[44px] min-w-[44px] rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#FFFFFF] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#93C5FD]"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Message History */}
-      <div className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
+      {/* Scrollable Message Stream */}
+      <div
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        className="flex-1 p-4 space-y-4 overflow-y-auto overscroll-contain bg-[#FFFFFF]"
+      >
         {messages.length === 0 ? (
-          <div className="text-center py-8">
-            <HelpCircle className="w-8 h-8 text-[#A2A8B5] mx-auto mb-2" />
-            <h4 className="text-xs font-bold text-[#14181F] mb-1">
-              Ask any specific question about your routine or environment
-            </h4>
-            <p className="text-xs text-[#6E7582] max-w-sm mx-auto mb-6">
-              Answers are strictly grounded in live CPCB/Open-Meteo readings and Stage 2 math — no invented figures.
-            </p>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg bg-[#F1F4F8] p-3.5">
+              <p className="text-xs font-semibold text-[#0F172A]">
+                Live Telemetry Advisor Ready
+              </p>
+              <p className="mt-1 text-xs text-[#334155] leading-relaxed">
+                Ask about your schedule, transit exposure, masks, or home ventilation in{" "}
+                {city}. Replies cite active CPCB readings and Stage 2 physics—never fabricated numbers.
+              </p>
+            </div>
 
-            {/* Starter Questions */}
-            <div className="max-w-lg mx-auto grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-              {starterQuestions.map((q, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => handleSubmit(q)}
-                  className="p-2.5 text-xs text-[#2B303B] bg-[#FAF9F6] border border-[#DDD9CE] hover:border-[#14181F] hover:bg-[#FFFFFF] rounded-md transition-all text-left"
-                >
-                  &ldquo;{q}&rdquo;
-                </button>
-              ))}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-[#525E70]">
+                Suggested prompts for your context
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {starterQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => handleSubmit(q)}
+                    className="p-3 min-h-[44px] text-xs text-[#0F172A] bg-[#F1F4F8] border border-[#DCE3EC] hover:border-[#1D4ED8] hover:bg-[#EFF6FF] rounded-lg transition-colors text-left leading-relaxed"
+                  >
+                    &ldquo;{q}&rdquo;
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -154,59 +268,55 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
               }`}
             >
               <div
-                className={`max-w-xl rounded-lg p-3.5 text-xs leading-relaxed ${
+                className={`max-w-[92%] rounded-lg p-3.5 text-sm leading-relaxed break-words ${
                   m.sender === "user"
-                    ? "bg-[#14181F] text-[#FFFFFF]"
-                    : "bg-[#FAF9F6] border border-[#DDD9CE] text-[#14181F]"
+                    ? "bg-[#0F172A] text-[#FFFFFF]"
+                    : "bg-[#F1F4F8] border border-[#DCE3EC] text-[#0F172A]"
                 }`}
               >
-                {/* Assistant Mode Badge */}
                 {m.sender === "assistant" && (
-                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#EAE7DF]">
+                  <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#DCE3EC]">
                     {m.mode === "ai" ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#1B4F72]">
-                        <Sparkles className="w-3 h-3 text-[#2980B9]" />
-                        Gemini AI
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1D4ED8]">
+                        <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Gemini AI</span>
                       </span>
                     ) : (
                       <span
-                        className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#2C3E50]"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#334155]"
                         title={
                           m.fallbackReason
-                            ? `Fallback reason: ${m.fallbackReason}`
-                            : undefined
+                            ? `Computed via Stage 2 physics (${m.fallbackReason})`
+                            : "Computed via Stage 2 microenvironment physics"
                         }
                         data-fallback-reason={m.fallbackReason}
                       >
-                        <Cpu className="w-3 h-3 text-[#34495E]" />
-                        Deterministic Physics Fallback
+                        <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Deterministic Physics Fallback</span>
                       </span>
                     )}
-                    {m.mode !== "ai" && m.fallbackReason && (
-                      <span className="text-[10px] font-mono text-[#6E7582]">
-                        ({m.fallbackReason})
-                      </span>
-                    )}
-                    <span className="text-[10px] text-[#7A8290] ml-auto">
+
+                    <span className="text-xs font-mono tabular-nums text-[#525E70] ml-auto">
                       {m.timestamp}
                     </span>
                   </div>
                 )}
 
-                <p>{m.text}</p>
+                <div className="space-y-1.5 whitespace-pre-line text-sm leading-relaxed break-words">
+                  {m.text}
+                </div>
 
-                {/* Cited Metrics Tags */}
                 {m.citedMetrics && m.citedMetrics.length > 0 && (
-                  <div className="mt-3 pt-2.5 border-t border-[#EAE7DF] space-y-1">
-                    <span className="text-[10px] font-mono font-bold text-[#6E7582] uppercase flex items-center gap-1">
-                      <Tag className="w-2.5 h-2.5" />
-                      Cited Live Metrics:
+                  <div className="mt-3 pt-2.5 border-t border-[#DCE3EC] space-y-1.5">
+                    <span className="text-xs font-semibold text-[#525E70] flex items-center gap-1">
+                      <Tag className="w-3 h-3" aria-hidden="true" />
+                      <span>Cited Live Metrics</span>
                     </span>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {m.citedMetrics.map((metric, i) => (
                         <span
                           key={i}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#EFECE6] text-[#2B303B] border border-[#DDD9CE]"
+                          className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[#FFFFFF] text-[#0F172A] border border-[#DCE3EC]"
                         >
                           {metric}
                         </span>
@@ -220,52 +330,75 @@ export function GroundedChat({ snapshot, profile }: GroundedChatProps) {
         )}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-[#6E7582] bg-[#FAF9F6] p-3 rounded-md w-fit border border-[#DDD9CE]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#14181F]" />
-            <span>Consulting grounded atmospheric models...</span>
+          <div className="flex items-center gap-2 text-xs text-[#334155] bg-[#F1F4F8] p-3 rounded-lg w-fit border border-[#DCE3EC]">
+            <Loader2
+              className="w-3.5 h-3.5 animate-spin text-[#1D4ED8]"
+              aria-hidden="true"
+            />
+            <span>Consulting grounded atmospheric telemetry...</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-900 text-xs rounded-md">
-            {error}
+          <div
+            role="alert"
+            className="p-3 bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] text-xs rounded-lg flex items-center justify-between gap-2"
+          >
+            <span>{error}</span>
+            {lastFailedQuestion && (
+              <button
+                type="button"
+                onClick={() =>
+                  handleSubmit(lastFailedQuestion, { isRetry: true })
+                }
+                className="inline-flex items-center gap-1 px-2.5 min-h-[36px] rounded bg-[#FFFFFF] border border-[#FCA5A5] font-semibold text-[#991B1B] shrink-0"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                <span>Retry</span>
+              </button>
+            )}
           </div>
         )}
+
+        <div ref={threadEndRef} />
       </div>
 
-      {/* Input Box */}
+      {/* Sticky Bottom 400-Char Composer */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleSubmit(question);
         }}
-        className="p-3 border-t border-[#EAE7DF] bg-[#FAF8F5]"
+        className="p-3 border-t border-[#DCE3EC] bg-[#F7F8FA]"
       >
         <div className="flex items-center gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={question}
             maxLength={400}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask anything about today's air quality, masks, windows, or safe hours..."
+            placeholder="Ask anything about today's air quality, masks, windows..."
             aria-label="Ask VayuPlan a question"
             disabled={isLoading}
-            className="flex-1 text-xs px-3.5 py-2.5 bg-[#FFFFFF] border border-[#DDD9CE] rounded-md text-[#14181F] placeholder:text-[#8C93A0] focus:outline-none focus:border-[#14181F]"
+            className="flex-1 min-w-0 text-base sm:text-sm px-3.5 min-h-[44px] bg-[#FFFFFF] border border-[#64748B]/70 rounded-lg text-[#0F172A] placeholder:text-[#525E70] focus:border-[#1D4ED8] transition-colors"
           />
           <button
             type="submit"
             disabled={isLoading || !question.trim()}
             aria-label="Send question"
-            className="px-4 py-2.5 bg-[#14181F] text-[#FFFFFF] rounded-md hover:bg-[#2B303B] active:bg-[#000000] disabled:opacity-50 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+            className="px-4 min-h-[44px] bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] rounded-lg disabled:opacity-55 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Ask</span>
+            <Send className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Ask</span>
           </button>
         </div>
 
-        <div className="flex justify-between items-center text-[10px] text-[#7A8290] mt-1.5 px-1 font-mono">
-          <span>Grounded strictly in active city telemetry</span>
-          <span>{question.length} / 400</span>
+        <div className="flex justify-between items-center text-xs text-[#525E70] mt-1.5 px-1">
+          <span>Grounded strictly in live station data</span>
+          <span className="font-mono tabular-nums">
+            {question.length} / 400
+          </span>
         </div>
       </form>
     </div>

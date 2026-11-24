@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { HourlyExposureChart } from "@/components/HourlyExposureChart";
 import { HourlyAirPoint } from "@/types/air-quality";
 import { RollingWindow } from "@/lib/calculators/exposure-windows";
@@ -50,18 +50,79 @@ describe("HourlyExposureChart Component", () => {
       />
     );
 
-    // Verify accessible role and label
     const svg = screen.getByRole("img", { name: /diurnal hourly air quality curve/i });
     expect(svg).toBeInTheDocument();
 
-    // Verify sr-only summary text
     expect(screen.getByText(/24-hour diurnal air quality forecast/i)).toBeInTheDocument();
     expect(screen.getByText(/Best outdoor window is between 13:00 and 15:00/i)).toBeInTheDocument();
     expect(screen.getByText(/Worst smog window is between 7:00 and 9:00/i)).toBeInTheDocument();
 
-    // Verify zero "NaN" strings in SVG attributes
     const svgHtml = container.querySelector("svg")?.outerHTML || "";
     expect(svgHtml).not.toContain("NaN");
+  });
+
+  it("reveals floating HTML inspection tooltip with IST hour, PM2.5, PM10, NAQI badge, and edge flipping on pointer interaction", () => {
+    const forecast = createMockForecast(24, (i) => 40 + i * 5);
+    render(
+      <HourlyExposureChart
+        hourlyForecast={forecast}
+        bestWindow={mockBestWindow}
+        worstWindow={mockWorstWindow}
+      />
+    );
+
+    // Interact with early hour vertical hit column (hour 2: PM2.5 = 50, PM10 = 75, NAQI 110 Moderate)
+    const earlyHit = screen.getByTestId("hour-hit-2");
+    fireEvent.pointerEnter(earlyHit);
+
+    const tooltip = screen.getByTestId("chart-floating-tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent("02:00 IST");
+    expect(tooltip).toHaveTextContent("50.0 µg/m³");
+    expect(tooltip).toHaveTextContent("75.0 µg/m³");
+    expect(tooltip).toHaveTextContent("NAQI 110");
+    expect(tooltip).toHaveTextContent("Caution");
+    expect(tooltip.style.transform).toContain("translateX(10px)");
+
+    // Interact near right edge (hour 22: PM2.5 = 150 > 120 -> Very Poor, NAQI 320, flips left)
+    const lateHit = screen.getByTestId("hour-hit-22");
+    fireEvent.pointerMove(lateHit);
+
+    const flippedTooltip = screen.getByTestId("chart-floating-tooltip");
+    expect(flippedTooltip).toHaveTextContent("22:00 IST");
+    expect(flippedTooltip).toHaveTextContent("Very Poor");
+    expect(flippedTooltip).toHaveTextContent("Avoid Outdoors");
+    expect(flippedTooltip.style.transform).toContain("-100%");
+  });
+
+  it("supports keyboard scrubbing with ArrowRight, ArrowLeft, End, Home, and Escape", () => {
+    const forecast = createMockForecast(24, () => 60);
+    render(
+      <HourlyExposureChart
+        hourlyForecast={forecast}
+        bestWindow={null}
+        worstWindow={null}
+      />
+    );
+
+    const scrubber = screen.getByRole("group", {
+      name: /Interactive diurnal air quality scrubber/i,
+    });
+
+    fireEvent.keyDown(scrubber, { key: "ArrowRight" });
+    expect(screen.getByTestId("chart-floating-tooltip")).toHaveTextContent("00:00 IST");
+
+    fireEvent.keyDown(scrubber, { key: "ArrowRight" });
+    expect(screen.getByTestId("chart-floating-tooltip")).toHaveTextContent("01:00 IST");
+
+    fireEvent.keyDown(scrubber, { key: "End" });
+    expect(screen.getByTestId("chart-floating-tooltip")).toHaveTextContent("23:00 IST");
+
+    fireEvent.keyDown(scrubber, { key: "ArrowLeft" });
+    expect(screen.getByTestId("chart-floating-tooltip")).toHaveTextContent("22:00 IST");
+
+    fireEvent.keyDown(scrubber, { key: "Escape" });
+    expect(screen.queryByTestId("chart-floating-tooltip")).not.toBeInTheDocument();
   });
 
   it("handles empty forecast [] safely without throwing or rendering NaN", () => {
@@ -99,14 +160,12 @@ describe("HourlyExposureChart Component", () => {
     const svg = screen.getByRole("img", { name: /diurnal hourly air quality curve/i });
     expect(svg).toBeInTheDocument();
 
-    // Verify NO NaN anywhere in rendered SVG markup
     const svgHtml = container.querySelector("svg")?.outerHTML || "";
     expect(svgHtml).not.toContain("NaN");
     expect(svgHtml).not.toContain("Infinity");
   });
 
   it("handles flat forecast (min === max) without division by zero or NaN", () => {
-    // 24 points with identical PM2.5 = 40 µg/m³
     const flatForecast = createMockForecast(24, () => 40);
 
     const { container } = render(

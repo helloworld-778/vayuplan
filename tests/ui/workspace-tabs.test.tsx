@@ -102,7 +102,7 @@ const mockAnalytics: ComputedAnalytics = {
 };
 
 describe("WorkspaceTabs Component", () => {
-  it("renders tablist with 4 WAI-ARIA tabs and active tabpanel", () => {
+  it("renders tablist with 3 analytical WAI-ARIA tabs and active tabpanel", () => {
     render(
       <WorkspaceTabs
         snapshot={mockSnapshot}
@@ -113,21 +113,17 @@ describe("WorkspaceTabs Component", () => {
       />
     );
 
-    // Verify tablist role
     const tablist = screen.getByRole("tablist", { name: /vayuplan workspace modules/i });
     expect(tablist).toBeInTheDocument();
 
-    // Verify 4 tabs
+    // Ask VayuPlan is permanently docked in the AI Copilot rail rather than hidden as tab 4
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(3);
 
-    // First tab is selected by default
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(tabs[1]).toHaveAttribute("aria-selected", "false");
     expect(tabs[2]).toHaveAttribute("aria-selected", "false");
-    expect(tabs[3]).toHaveAttribute("aria-selected", "false");
 
-    // Associated tabpanel is rendered
     const panel = screen.getByRole("tabpanel");
     expect(panel).toHaveAttribute("id", "tabpanel-routine");
   });
@@ -150,7 +146,7 @@ describe("WorkspaceTabs Component", () => {
     expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
   });
 
-  it("supports keyboard navigation: ArrowRight, ArrowLeft, Home, End", () => {
+  it("supports keyboard navigation across all 3 analytical tabs: ArrowRight, ArrowLeft, Home, End", () => {
     render(
       <WorkspaceTabs
         snapshot={mockSnapshot}
@@ -162,26 +158,20 @@ describe("WorkspaceTabs Component", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    const firstTab = tabs[0];
 
-    // ArrowRight moves from tab 0 to tab 1
-    fireEvent.keyDown(firstTab, { key: "ArrowRight" });
+    fireEvent.keyDown(tabs[0], { key: "ArrowRight" });
     expect(tabs[1]).toHaveAttribute("aria-selected", "true");
 
-    // ArrowRight again moves to tab 2
     fireEvent.keyDown(tabs[1], { key: "ArrowRight" });
     expect(tabs[2]).toHaveAttribute("aria-selected", "true");
 
-    // ArrowLeft moves back to tab 1
     fireEvent.keyDown(tabs[2], { key: "ArrowLeft" });
     expect(tabs[1]).toHaveAttribute("aria-selected", "true");
 
-    // End jumps to last tab (tab 3)
     fireEvent.keyDown(tabs[1], { key: "End" });
-    expect(tabs[3]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[2]).toHaveAttribute("aria-selected", "true");
 
-    // Home jumps to first tab (tab 0)
-    fireEvent.keyDown(tabs[3], { key: "Home" });
+    fireEvent.keyDown(tabs[2], { key: "Home" });
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
   });
 });

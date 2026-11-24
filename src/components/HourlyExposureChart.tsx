@@ -1,14 +1,88 @@
 "use client";
 
-import React, { useState } from "react";
-import { HourlyAirPoint } from "@/types/air-quality";
-import { RollingWindow } from "@/lib/calculators/exposure-windows";
-import { parseHourFromIso } from "@/lib/calculators/exposure-windows";
+import React, { useMemo, useRef, useState } from "react";
+import { HourlyAirPoint, NaqiCategory } from "@/types/air-quality";
+import {
+  RollingWindow,
+  parseHourFromIso,
+} from "@/lib/calculators/exposure-windows";
+import { getNaqiTheme } from "@/lib/aqi/theme";
 
 interface HourlyExposureChartProps {
   hourlyForecast: HourlyAirPoint[];
   bestWindow: RollingWindow | null;
   worstWindow: RollingWindow | null;
+}
+
+interface PlotPoint {
+  x: number;
+  y: number;
+  pm25: number;
+  pm10: number | null;
+  naqi: number;
+  category: NaqiCategory;
+  hour: number;
+  timeIso: string;
+}
+
+function buildMonotoneSplinePath(coords: Array<{ x: number; y: number }>): string {
+  if (coords.length === 0) return "";
+  if (coords.length === 1) {
+    return `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  }
+
+  const n = coords.length;
+  const dx: number[] = [];
+  const slopes: number[] = [];
+
+  for (let i = 0; i < n - 1; i++) {
+    const deltaX = Math.max(0.0001, coords[i + 1].x - coords[i].x);
+    dx.push(deltaX);
+    slopes.push((coords[i + 1].y - coords[i].y) / deltaX);
+  }
+
+  const tangents: number[] = new Array(n).fill(0);
+  tangents[0] = slopes[0];
+  tangents[n - 1] = slopes[n - 2];
+
+  for (let i = 1; i < n - 1; i++) {
+    if (slopes[i - 1] * slopes[i] <= 0) {
+      tangents[i] = 0;
+    } else {
+      const m0 = slopes[i - 1];
+      const m1 = slopes[i];
+      const d0 = dx[i - 1];
+      const d1 = dx[i];
+      const common = d0 + d1;
+      tangents[i] = (3 * common) / ((common + d1) / m0 + (common + d0) / m1);
+    }
+  }
+
+  let path = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    const cp1x = coords[i].x + h;
+    const cp1y = coords[i].y + h * tangents[i];
+    const cp2x = coords[i + 1].x - h;
+    const cp2y = coords[i + 1].y - h * tangents[i + 1];
+    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(
+      1
+    )} ${cp2y.toFixed(1)}, ${coords[i + 1].x.toFixed(1)} ${coords[i + 1].y.toFixed(1)}`;
+  }
+
+  return path;
+}
+
+function getSafetyPostureLabel(naqi: number): "Safe" | "Caution" | "Avoid Outdoors" {
+  if (naqi <= 100) return "Safe";
+  if (naqi <= 200) return "Caution";
+  return "Avoid Outdoors";
+}
+
+function getPostureTextClass(naqi: number): string {
+  if (naqi <= 100) return "text-[#065F46]";
+  if (naqi <= 200) return "text-[#92400E]";
+  return "text-[#991B1B]";
 }
 
 export function HourlyExposureChart({
@@ -17,145 +91,255 @@ export function HourlyExposureChart({
   worstWindow,
 }: HourlyExposureChartProps) {
   const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  // Take up to 36 hours for clear temporal resolution
-  const points = (hourlyForecast || []).slice(0, 36);
+  const points = useMemo(
+    () => (hourlyForecast || []).slice(0, 36),
+    [hourlyForecast]
+  );
+
+  const width = 800;
+  const height = 260;
+  const paddingLeft = 48;
+  const paddingRight = 20;
+  const paddingTop = 34;
+  const paddingBottom = 38;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+
+  const { coords, maxPm25, linePath, areaPath, columns } = useMemo(() => {
+    if (points.length === 0) {
+      return {
+        coords: [] as PlotPoint[],
+        maxPm25: 120,
+        linePath: "",
+        areaPath: "",
+        columns: [] as Array<{ x: number; w: number }>,
+      };
+    }
+
+    const safeMax = Math.max(
+      ...points.map((p) =>
+        typeof p.pm25 === "number" && Number.isFinite(p.pm25) ? Math.max(0, p.pm25) : 0
+      ),
+      120
+    );
+
+    const mapped: PlotPoint[] = points.map((p, idx) => {
+      const x =
+        points.length > 1
+          ? paddingLeft + (idx / (points.length - 1)) * chartWidth
+          : paddingLeft + chartWidth / 2;
+      const pm25Val =
+        typeof p.pm25 === "number" && Number.isFinite(p.pm25) ? Math.max(0, p.pm25) : 0;
+      const pm10Val =
+        typeof p.pm10 === "number" && Number.isFinite(p.pm10) ? Math.max(0, p.pm10) : null;
+      const y = paddingTop + chartHeight - (pm25Val / safeMax) * chartHeight;
+      const hour = parseHourFromIso(p.timeIso);
+
+      return {
+        x: Number.isFinite(x) ? x : paddingLeft,
+        y: Number.isFinite(y) ? y : paddingTop + chartHeight,
+        pm25: pm25Val,
+        pm10: pm10Val,
+        naqi: Number.isFinite(p.estimatedNaqi) ? Math.round(p.estimatedNaqi) : 0,
+        category: p.category ?? "Good",
+        hour: Number.isFinite(hour) ? hour : 0,
+        timeIso: p.timeIso,
+      };
+    });
+
+    const path = buildMonotoneSplinePath(mapped);
+    const baselineY = (paddingTop + chartHeight).toFixed(1);
+    const area =
+      mapped.length > 1
+        ? `${path} L ${mapped[mapped.length - 1].x.toFixed(1)} ${baselineY} L ${mapped[0].x.toFixed(
+            1
+          )} ${baselineY} Z`
+        : "";
+
+    const cols = mapped.map((c, idx) => {
+      if (mapped.length === 1) {
+        return { x: paddingLeft, w: chartWidth };
+      }
+      const leftEdge =
+        idx === 0 ? paddingLeft : (mapped[idx - 1].x + c.x) / 2;
+      const rightEdge =
+        idx === mapped.length - 1
+          ? width - paddingRight
+          : (c.x + mapped[idx + 1].x) / 2;
+      return {
+        x: leftEdge,
+        w: Math.max(8, rightEdge - leftEdge),
+      };
+    });
+
+    return {
+      coords: mapped,
+      maxPm25: safeMax,
+      linePath: path,
+      areaPath: area,
+      columns: cols,
+    };
+  }, [points, chartWidth, chartHeight]);
 
   if (points.length === 0) {
     return (
-      <div className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg p-5">
+      <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1">
         <div className="sr-only" aria-live="polite">
           No hourly forecast data available.
         </div>
-        <p className="text-xs text-[#7A8290] text-center py-8">
+        <p className="text-xs text-[#525E70] text-center py-8">
           No hourly forecast data available.
         </p>
       </div>
     );
   }
 
-  // Find max values for scaling (guard against flat 0 or negative values)
-  const maxPm25 = Math.max(
-    ...points.map((p) => (typeof p.pm25 === "number" && !isNaN(p.pm25) ? p.pm25 : 0)),
-    120 // minimum chart ceiling ensures divisor is always >= 120 (never 0 or NaN)
-  );
-
-  // SVG Chart Geometry
-  const width = 800;
-  const height = 220;
-  const paddingLeft = 45;
-  const paddingRight = 20;
-  const paddingTop = 25;
-  const paddingBottom = 35;
-
-  const chartWidth = width - paddingLeft - paddingRight;
-  const chartHeight = height - paddingTop - paddingBottom;
-
-  // Calculate coordinates for each point (guard single-point to avoid divide by zero)
-  const coords = points.map((p, idx) => {
-    const x =
-      points.length > 1
-        ? paddingLeft + (idx / (points.length - 1)) * chartWidth
-        : paddingLeft + chartWidth / 2;
-    const pm25Val = typeof p.pm25 === "number" && !isNaN(p.pm25) ? p.pm25 : 0;
-    const y = paddingTop + chartHeight - (pm25Val / maxPm25) * chartHeight;
-    const hour = parseHourFromIso(p.timeIso);
-    return {
-      x: isFinite(x) ? x : paddingLeft,
-      y: isFinite(y) ? y : paddingTop + chartHeight,
-      pm25: pm25Val,
-      naqi: p.estimatedNaqi ?? 0,
-      category: p.category ?? "Good",
-      hour,
-      timeIso: p.timeIso,
-    };
-  });
-
-  // Construct SVG path string
-  const linePath = coords.reduce(
-    (acc, curr, idx) =>
-      idx === 0
-        ? `M ${curr.x.toFixed(1)} ${curr.y.toFixed(1)}`
-        : `${acc} L ${curr.x.toFixed(1)} ${curr.y.toFixed(1)}`,
-    ""
-  );
-
-  const areaPath =
-    coords.length > 1
-      ? `${linePath} L ${coords[coords.length - 1].x.toFixed(
-          1
-        )} ${(paddingTop + chartHeight).toFixed(1)} L ${coords[0].x.toFixed(
-          1
-        )} ${(paddingTop + chartHeight).toFixed(1)} Z`
-      : "";
-
-  // Helper to find X span for a window
   const getWindowSpan = (win: RollingWindow | null) => {
-    if (!win || points.length === 0) return null;
-    const startIndex = points.findIndex((p) => p.timeIso === win.startTimeIso);
+    if (!win || coords.length === 0) return null;
+    const startIndex = coords.findIndex((p) => p.timeIso === win.startTimeIso);
     if (startIndex === -1 || !coords[startIndex]) return null;
     const endIndex = Math.min(startIndex + 1, coords.length - 1);
-    const x1 = coords[startIndex].x - 10;
-    const x2 = coords[endIndex].x + 10;
-    const spanX = Math.max(paddingLeft, x1);
-    const spanWidth = Math.max(24, x2 - x1);
-    if (!isFinite(spanX) || !isFinite(spanWidth)) return null;
-    return { x: spanX, width: spanWidth };
+    const rawLeft = coords[startIndex].x - 10;
+    const rawRight = coords[endIndex].x + 10;
+    const spanX = Math.max(paddingLeft, rawLeft);
+    const spanW = Math.min(width - paddingRight - spanX, Math.max(58, rawRight - spanX));
+    if (!Number.isFinite(spanX) || !Number.isFinite(spanW) || spanW <= 0) {
+      return null;
+    }
+    return { x: spanX, width: spanW };
   };
 
   const bestSpan = getWindowSpan(bestWindow);
   const worstSpan = getWindowSpan(worstWindow);
 
-  // Screen-reader text summary
   const srSummary = `24-hour diurnal air quality forecast. Peak PM2.5 of ${maxPm25.toFixed(
     1
-  )} µg/m³. Best outdoor window is between ${bestWindow?.startHour ?? "N/A"}:00 and ${
-    bestWindow?.endHour ?? "N/A"
-  }:00 with average PM2.5 of ${bestWindow?.avgPm25 ?? "N/A"} µg/m³. Worst smog window is between ${
-    worstWindow?.startHour ?? "N/A"
-  }:00 and ${worstWindow?.endHour ?? "N/A"}:00 with average PM2.5 of ${
-    worstWindow?.avgPm25 ?? "N/A"
-  } µg/m³.`;
+  )} µg/m³. Best outdoor window is between ${
+    bestWindow?.startHour ?? "N/A"
+  }:00 and ${bestWindow?.endHour ?? "N/A"}:00 with average PM2.5 of ${
+    bestWindow?.avgPm25 ?? "N/A"
+  } µg/m³. Worst smog window is between ${worstWindow?.startHour ?? "N/A"}:00 and ${
+    worstWindow?.endHour ?? "N/A"
+  }:00 with average PM2.5 of ${worstWindow?.avgPm25 ?? "N/A"} µg/m³.`;
+
+  // Continuous pointer coordinate scrubbing across SVG (supports both mouse and touch sliding)
+  const scrubFromClientX = (clientX: number) => {
+    const svg = svgRef.current;
+    if (!svg || coords.length === 0) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    const relX = ((clientX - rect.left) / rect.width) * width;
+    let nearest = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < coords.length; i++) {
+      const dist = Math.abs(coords[i].x - relX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        nearest = i;
+      }
+    }
+    setActivePointIndex(nearest);
+  };
+
+  const handleChartKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (coords.length === 0) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setActivePointIndex((prev) =>
+        prev === null ? 0 : Math.min(coords.length - 1, prev + 1)
+      );
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setActivePointIndex((prev) =>
+        prev === null ? coords.length - 1 : Math.max(0, prev - 1)
+      );
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActivePointIndex(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActivePointIndex(coords.length - 1);
+    } else if (e.key === "Escape") {
+      setActivePointIndex(null);
+    }
+  };
+
+  const activeCoord =
+    activePointIndex !== null && coords[activePointIndex]
+      ? coords[activePointIndex]
+      : null;
+  const activeTheme = activeCoord ? getNaqiTheme(activeCoord.category) : null;
+  const ActiveIcon = activeTheme?.icon;
+  const activeLeftPct = activeCoord ? (activeCoord.x / width) * 100 : 50;
+  const alignRight = activeLeftPct > 56;
+  const clampedAnchorPct = Math.min(94, Math.max(6, activeLeftPct));
 
   return (
-    <div className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg p-5">
-      {/* Screen Reader Accessible Summary */}
+    <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-5 sm:p-6 elevation-1">
       <div className="sr-only" aria-live="polite">
         {srSummary}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+      {/* Persistent live region so initial keyboard ArrowRight announcement never misses */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {activeCoord
+          ? `${activeCoord.hour.toString().padStart(2, "0")}:00 IST, PM2.5 ${activeCoord.pm25.toFixed(1)} µg/m³, NAQI ${activeCoord.naqi}, ${activeCoord.category}, ${getSafetyPostureLabel(activeCoord.naqi)}.`
+          : ""}
+      </div>
+
+      {/* Header & Legend */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[#14181F]">
+          <h3 className="font-display text-base font-semibold tracking-tight text-[#0F172A]">
             Diurnal Exposure Curve (Next 24–36 Hours)
           </h3>
-          <p className="text-xs text-[#5E6470]">
-            Ground-level thermal inversion tracking • Hourly PM2.5 (µg/m³)
+          <p className="text-xs text-[#525E70] mt-0.5">
+            Solar dispersion vs. thermal inversion trapping · Scrub chart for hourly readings
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-[11px]">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-xs bg-[#D4EDDA] border border-[#2E7D32]" />
-            <span className="text-[#2B303B]">Best 2h Window</span>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-[#334155]">
+          <div className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-[2px] bg-[#ECFDF5] border border-[#059669]" />
+            <span>Best 2h Window</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-xs bg-[#F8D7DA] border border-[#C62828]" />
-            <span className="text-[#2B303B]">Peak Smog Window</span>
+          <div className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-[2px] bg-[#FEF2F2] border border-[#DC2626]" />
+            <span>Peak Smog Window</span>
           </div>
         </div>
       </div>
 
-      {/* SVG Canvas */}
-      <div className="relative overflow-x-auto">
+      {/* Interactive Chart Viewport + Clamped Floating/Docked Tooltip */}
+      <div
+        role="group"
+        tabIndex={0}
+        aria-label="Interactive diurnal air quality scrubber. Use Left and Right arrow keys to inspect hours."
+        onKeyDown={handleChartKeyDown}
+        onBlur={() => setActivePointIndex(null)}
+        onPointerLeave={() => setActivePointIndex(null)}
+        onPointerCancel={() => setActivePointIndex(null)}
+        className="relative rounded-lg border border-[#DCE3EC] bg-[#FFFFFF] p-2 select-none"
+      >
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-auto select-none"
+          className="w-full h-auto block overflow-visible touch-pan-y"
           role="img"
           aria-label="Diurnal hourly air quality curve"
+          onPointerMove={(e) => scrubFromClientX(e.clientX)}
+          onPointerDown={(e) => scrubFromClientX(e.clientX)}
         >
-          {/* Background horizontal grid lines */}
+          <defs>
+            <linearGradient id="diurnalCobaltFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1D4ED8" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+
+          {/* Horizontal Y-Axis Reference Ticks */}
           {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
             const y = paddingTop + chartHeight * (1 - ratio);
             const val = Math.round(maxPm25 * ratio);
@@ -166,14 +350,16 @@ export function HourlyExposureChart({
                   y1={y}
                   x2={width - paddingRight}
                   y2={y}
-                  stroke="#EFECE6"
-                  strokeDasharray="3 3"
+                  stroke={ratio === 0 ? "#CBD5E1" : "#E2E8F0"}
+                  strokeDasharray={ratio === 0 ? undefined : "3 3"}
+                  strokeWidth="1"
                 />
                 <text
                   x={paddingLeft - 8}
-                  y={y + 3}
+                  y={y + 4}
                   textAnchor="end"
-                  className="fill-[#8C93A0] text-[9px] font-mono tabular-nums"
+                  fontSize={12}
+                  className="fill-[#525E70] font-mono tabular-nums"
                 >
                   {val}
                 </text>
@@ -181,142 +367,248 @@ export function HourlyExposureChart({
             );
           })}
 
-          {/* Best Window Highlight Area */}
-          {bestSpan && (
-            <rect
-              x={bestSpan.x}
-              y={paddingTop}
-              width={bestSpan.width}
-              height={chartHeight}
-              fill="#E8F5E9"
-              stroke="#A5D6A7"
-              strokeDasharray="2 2"
-              opacity="0.9"
-            />
-          )}
-
-          {/* Worst Smog Window Highlight Area */}
+          {/* Peak Smog Window Shaded Band */}
           {worstSpan && (
-            <rect
-              x={worstSpan.x}
-              y={paddingTop}
-              width={worstSpan.width}
-              height={chartHeight}
-              fill="#FFEBEE"
-              stroke="#EF9A9A"
-              strokeDasharray="2 2"
-              opacity="0.9"
-            />
+            <g>
+              <rect
+                x={worstSpan.x}
+                y={paddingTop}
+                width={worstSpan.width}
+                height={chartHeight}
+                fill="rgba(220, 38, 38, 0.09)"
+              />
+              <line
+                x1={worstSpan.x}
+                y1={paddingTop}
+                x2={worstSpan.x + worstSpan.width}
+                y2={paddingTop}
+                stroke="#DC2626"
+                strokeWidth="2"
+                strokeDasharray="4 3"
+              />
+              <rect
+                x={worstSpan.x + worstSpan.width / 2 - 38}
+                y={paddingTop - 22}
+                width={76}
+                height={18}
+                rx={3}
+                fill="#FEF2F2"
+                stroke="#FCA5A5"
+              />
+              <text
+                x={worstSpan.x + worstSpan.width / 2}
+                y={paddingTop - 10}
+                textAnchor="middle"
+                fontSize={10}
+                className="fill-[#991B1B] font-mono font-bold tracking-wider"
+              >
+                PEAK SMOG
+              </text>
+            </g>
           )}
 
-          {/* Gradient area fill under curve */}
-          <path d={areaPath} fill="#F2EFE9" opacity="0.75" />
+          {/* Best 2h Window Shaded Band */}
+          {bestSpan && (
+            <g>
+              <rect
+                x={bestSpan.x}
+                y={paddingTop}
+                width={bestSpan.width}
+                height={chartHeight}
+                fill="rgba(5, 150, 105, 0.10)"
+              />
+              <line
+                x1={bestSpan.x}
+                y1={paddingTop}
+                x2={bestSpan.x + bestSpan.width}
+                y2={paddingTop}
+                stroke="#059669"
+                strokeWidth="2"
+                strokeDasharray="4 3"
+              />
+              <rect
+                x={bestSpan.x + bestSpan.width / 2 - 31}
+                y={paddingTop - 22}
+                width={62}
+                height={18}
+                rx={3}
+                fill="#ECFDF5"
+                stroke="#6EE7B7"
+              />
+              <text
+                x={bestSpan.x + bestSpan.width / 2}
+                y={paddingTop - 10}
+                textAnchor="middle"
+                fontSize={10}
+                className="fill-[#065F46] font-mono font-bold tracking-wider"
+              >
+                BEST 2H
+              </text>
+            </g>
+          )}
 
-          {/* PM2.5 Trend Line */}
+          {/* Area Fill & Monotone Cubic Curve */}
+          {areaPath && <path d={areaPath} fill="url(#diurnalCobaltFill)" />}
           <path
             d={linePath}
             fill="none"
-            stroke="#14181F"
-            strokeWidth="2.2"
+            stroke="#0F172A"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
-          {/* Interactive Data Points and Hour Ticks */}
+          {coords.length === 1 && (
+            <circle
+              cx={coords[0].x}
+              cy={coords[0].y}
+              r="5"
+              fill="#FFFFFF"
+              stroke="#1D4ED8"
+              strokeWidth="2.5"
+            />
+          )}
+
+          {/* X-Axis Hour Labels */}
           {coords.map((c, idx) => {
-            const isEveryThird = idx % 3 === 0;
-            const isActive = activePointIndex === idx;
-
+            const showTick = idx % 3 === 0 || coords.length === 1;
+            if (!showTick) return null;
             return (
-              <g key={idx}>
-                {/* Vertical tick line */}
-                {isEveryThird && (
-                  <line
-                    x1={c.x}
-                    y1={paddingTop + chartHeight}
-                    x2={c.x}
-                    y2={paddingTop + chartHeight + 5}
-                    stroke="#DDD9CE"
-                  />
-                )}
-
-                {/* Hour label */}
-                {isEveryThird && (
-                  <text
-                    x={c.x}
-                    y={paddingTop + chartHeight + 18}
-                    textAnchor="middle"
-                    className="fill-[#6E7582] text-[10px] font-mono"
-                  >
-                    {c.hour.toString().padStart(2, "0")}:00
-                  </text>
-                )}
-
-                {/* Point dot */}
-                <circle
-                  cx={c.x}
-                  cy={c.y}
-                  r={isActive ? "5" : "2.5"}
-                  fill={isActive ? "#14181F" : "#FFFFFF"}
-                  stroke="#14181F"
-                  strokeWidth={isActive ? "2" : "1.5"}
-                  className="cursor-pointer transition-all"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`${c.hour}:00 - PM2.5 ${c.pm25} µg/m³, NAQI ${c.naqi}`}
-                  onFocus={() => setActivePointIndex(idx)}
-                  onBlur={() => setActivePointIndex(null)}
-                  onMouseEnter={() => setActivePointIndex(idx)}
-                  onMouseLeave={() => setActivePointIndex(null)}
+              <g key={`tick-${idx}`}>
+                <line
+                  x1={c.x}
+                  y1={paddingTop + chartHeight}
+                  x2={c.x}
+                  y2={paddingTop + chartHeight + 5}
+                  stroke="#CBD5E1"
                 />
+                <text
+                  x={c.x}
+                  y={paddingTop + chartHeight + 21}
+                  textAnchor="middle"
+                  fontSize={12}
+                  className="fill-[#525E70] font-mono tabular-nums"
+                >
+                  {c.hour.toString().padStart(2, "0")}:00
+                </text>
               </g>
             );
           })}
 
-          {/* Active Hover / Keyboard Focus Tooltip */}
-          {activePointIndex !== null && coords[activePointIndex] && (
-            <g>
-              {/* Vertical crosshair */}
+          {/* Active Crosshair & Concentric Focus Ring */}
+          {activeCoord && (
+            <g className="pointer-events-none">
               <line
-                x1={coords[activePointIndex].x}
+                x1={activeCoord.x}
                 y1={paddingTop}
-                x2={coords[activePointIndex].x}
+                x2={activeCoord.x}
                 y2={paddingTop + chartHeight}
-                stroke="#14181F"
-                strokeWidth="1"
-                strokeDasharray="2 2"
+                stroke="#1D4ED8"
+                strokeWidth="1.5"
               />
-
-              {/* Tooltip Card */}
-              <foreignObject
-                x={Math.min(
-                  coords[activePointIndex].x - 60,
-                  width - paddingRight - 120
-                )}
-                y={Math.max(5, coords[activePointIndex].y - 55)}
-                width="120"
-                height="50"
-              >
-                <div className="bg-[#14181F] text-[#FFFFFF] rounded p-1.5 text-center shadow-md">
-                  <div className="text-[10px] font-mono text-[#DCD8CF]">
-                    {coords[activePointIndex].hour.toString().padStart(2, "0")}:00 • {coords[activePointIndex].category}
-                  </div>
-                  <div className="text-xs font-bold font-mono">
-                    {coords[activePointIndex].pm25} µg/m³
-                  </div>
-                </div>
-              </foreignObject>
+              <line
+                x1={paddingLeft}
+                y1={activeCoord.y}
+                x2={activeCoord.x}
+                y2={activeCoord.y}
+                stroke="#CBD5E1"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+              />
+              <circle
+                cx={activeCoord.x}
+                cy={activeCoord.y}
+                r="6"
+                fill="#FFFFFF"
+                stroke="#1D4ED8"
+                strokeWidth="2.5"
+              />
+              <circle cx={activeCoord.x} cy={activeCoord.y} r="2.2" fill="#1D4ED8" />
             </g>
           )}
+
+          {/* Full-Column Hit Targets per Hour */}
+          {coords.map((c, idx) => {
+            const col = columns[idx];
+            if (!col) return null;
+            return (
+              <rect
+                key={`hit-${idx}`}
+                data-testid={`hour-hit-${idx}`}
+                x={col.x}
+                y={paddingTop}
+                width={col.w}
+                height={chartHeight}
+                fill="transparent"
+                className="cursor-crosshair"
+                onPointerEnter={() => setActivePointIndex(idx)}
+                onPointerMove={() => setActivePointIndex(idx)}
+                onPointerDown={() => setActivePointIndex(idx)}
+              />
+            );
+          })}
         </svg>
+
+        {/* Responsive Tooltip Card: Inline full-width below SVG on <640px mobile, floating clamped on sm+ */}
+        {activeCoord && activeTheme && ActiveIcon && (
+          <div
+            data-testid="chart-floating-tooltip"
+            style={{
+              left: `${clampedAnchorPct}%`,
+              top: "12px",
+              transform: alignRight
+                ? "translateX(calc(-100% - 10px))"
+                : "translateX(10px)",
+            }}
+            className="chart-tooltip-responsive pointer-events-none mt-2 w-full sm:mt-0 sm:w-56 sm:absolute sm:z-20 rounded-lg border border-[#CBD5E1] bg-[#FFFFFF] p-3 elevation-3 text-xs"
+          >
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#DCE3EC]">
+              <span className="font-mono tabular-nums font-semibold text-[#0F172A]">
+                {activeCoord.hour.toString().padStart(2, "0")}:00 IST
+              </span>
+              <span className={`font-semibold ${getPostureTextClass(activeCoord.naqi)}`}>
+                {getSafetyPostureLabel(activeCoord.naqi)}
+              </span>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
+                <span className="text-xs text-[#525E70] block">PM2.5</span>
+                <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                  {activeCoord.pm25.toFixed(1)} µg/m³
+                </span>
+              </div>
+              <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
+                <span className="text-xs text-[#525E70] block">PM10</span>
+                <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                  {activeCoord.pm10 !== null
+                    ? `${activeCoord.pm10.toFixed(1)} µg/m³`
+                    : "—"}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-semibold ${activeTheme.badgeBg}`}
+              >
+                <ActiveIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
+                <span>{activeCoord.category}</span>
+              </span>
+              <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                NAQI {activeCoord.naqi}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[#EAE7DF] flex flex-wrap items-center justify-between text-xs text-[#5E6470]">
-        <span className="font-mono text-[11px]">
-          X-Axis: Local Indian Standard Time (IST) • Y-Axis: PM2.5 Concentration (µg/m³)
+      <div className="mt-3 pt-3 border-t border-[#DCE3EC] flex flex-wrap items-center justify-between gap-2 text-xs text-[#525E70]">
+        <span>
+          X: Local IST · Y: PM2.5 (µg/m³)
         </span>
-        <span className="text-[11px] text-[#7A8290]">
-          Hover or Tab through dots for exact hourly readings
+        <span>
+          Hover, slide, or focus chart + Left/Right arrows to scrub hours
         </span>
       </div>
     </div>

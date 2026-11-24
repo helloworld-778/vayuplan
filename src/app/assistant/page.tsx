@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AirQualitySnapshot,
   AssistantPlanResponse,
@@ -12,11 +12,15 @@ import {
 import { ComputedAnalytics } from "@/lib/ai/types";
 import { EVALUATOR_PRESETS, EvaluatorPreset } from "@/lib/presets";
 import { TopBar } from "@/components/TopBar";
-import { PresetStrip } from "@/components/PresetStrip";
 import { TelemetryHero } from "@/components/TelemetryHero";
+import {
+  TodaysSmartBrief,
+  AnalyticalTabKey,
+} from "@/components/TodaysSmartBrief";
 import { HouseholdProfiler } from "@/components/HouseholdProfiler";
 import { WorkspaceTabs } from "@/components/WorkspaceTabs";
-import { AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+import { GroundedChat, ChatMessage } from "@/components/GroundedChat";
+import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 
 const STORAGE_KEY_LOCATION = "vayuplan_location";
 const STORAGE_KEY_PROFILE = "vayuplan_profile";
@@ -25,21 +29,39 @@ function AssistantWorkspaceContent() {
   const searchParams = useSearchParams();
   const defaultPreset = EVALUATOR_PRESETS["delhi-commuter"];
 
-  const [location, setLocation] = useState<ResolvedLocation>(defaultPreset.location);
-  const [profile, setProfile] = useState<HouseholdProfile>(defaultPreset.profile);
-  const [activePresetId, setActivePresetId] = useState<string | null>("delhi-commuter");
+  const [location, setLocation] = useState<ResolvedLocation>(
+    defaultPreset.location
+  );
+  const [profile, setProfile] = useState<HouseholdProfile>(
+    defaultPreset.profile
+  );
+  const [activePresetId, setActivePresetId] = useState<string | null>(
+    "delhi-commuter"
+  );
 
   const [snapshot, setSnapshot] = useState<AirQualitySnapshot | null>(null);
   const [plan, setPlan] = useState<AssistantPlanResponse | null>(null);
   const [analytics, setAnalytics] = useState<ComputedAnalytics | null>(null);
 
+  const [activeTab, setActiveTab] = useState<AnalyticalTabKey>("routine");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [copilotPrefill, setCopilotPrefill] = useState<{
+    text: string;
+    seq: number;
+  } | null>(null);
+  const [isMobileCopilotOpen, setIsMobileCopilotOpen] = useState(false);
+
   const [isTelemetryLoading, setIsTelemetryLoading] = useState(true);
   const [isPlanLoading, setIsPlanLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
   const activeTelemetryAbortRef = useRef<AbortController | null>(null);
   const activePlanAbortRef = useRef<AbortController | null>(null);
+  const tabsSectionRef = useRef<HTMLDivElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -47,6 +69,58 @@ function AssistantWorkspaceContent() {
       activePlanAbortRef.current?.abort();
     };
   }, []);
+
+  // Accessible mobile Copilot dialog: body scroll lock, initial focus, Tab trap & Escape restore
+  useEffect(() => {
+    if (!isMobileCopilotOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusTimer = setTimeout(() => {
+      const dialog = mobileDialogRef.current;
+      if (!dialog) return;
+      const input = dialog.querySelector<HTMLInputElement>(
+        'input[type="text"]'
+      );
+      if (input) {
+        input.focus();
+      } else {
+        dialog.focus();
+      }
+    }, 50);
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileCopilotOpen(false);
+        mobileTriggerRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "Tab" && mobileDialogRef.current) {
+        const focusables = mobileDialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      clearTimeout(focusTimer);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [isMobileCopilotOpen]);
 
   const loadTelemetry = useCallback(async (loc: ResolvedLocation) => {
     if (activeTelemetryAbortRef.current) {
@@ -57,7 +131,10 @@ function AssistantWorkspaceContent() {
 
     setIsTelemetryLoading(true);
     setErrorMessage(null);
-    setLiveAnnouncement(`Fetching live air quality telemetry for ${loc.name}...`);
+    setPlanError(null);
+    setLiveAnnouncement(
+      `Fetching live air quality telemetry for ${loc.name}...`
+    );
 
     try {
       const res = await fetch(
@@ -82,7 +159,8 @@ function AssistantWorkspaceContent() {
       if ((err as Error).name === "AbortError") {
         return null;
       }
-      const msg = (err as Error).message || "Atmospheric telemetry service unreachable.";
+      const msg =
+        (err as Error).message || "Atmospheric telemetry service unreachable.";
       setErrorMessage(msg);
       setLiveAnnouncement(`Error: ${msg}`);
       return null;
@@ -102,7 +180,10 @@ function AssistantWorkspaceContent() {
       activePlanAbortRef.current = controller;
 
       setIsPlanLoading(true);
-      setLiveAnnouncement("Updating personalized plan and environmental calculations...");
+      setPlanError(null);
+      setLiveAnnouncement(
+        "Updating personalized plan and environmental calculations..."
+      );
 
       try {
         const res = await fetch("/api/assistant/plan", {
@@ -123,12 +204,16 @@ function AssistantWorkspaceContent() {
         const data = await res.json();
         setPlan(data.plan);
         setAnalytics(data.analytics);
-        setLiveAnnouncement("Personalized air quality plan updated successfully.");
+        setPlanError(null);
+        setLiveAnnouncement("Personalized air quality plan updated.");
       } catch (err) {
         if ((err as Error).name === "AbortError") {
           return;
         }
-        console.warn("Plan generation fallback note:", err);
+        const msg =
+          (err as Error).message || "Unable to synthesize household plan.";
+        setPlanError(msg);
+        setLiveAnnouncement(`Plan update issue: ${msg}`);
       } finally {
         if (activePlanAbortRef.current === controller) {
           setIsPlanLoading(false);
@@ -138,13 +223,16 @@ function AssistantWorkspaceContent() {
     []
   );
 
-  // Resolve initial state from query params (?preset= or ?lat=&lon=&name=&state=) or localStorage
+  const searchParamsKey = searchParams.toString();
+
+  // Hydrate initial location/profile from URL query params or localStorage
   useEffect(() => {
-    const presetParam = searchParams.get("preset");
-    const latParam = searchParams.get("lat");
-    const lonParam = searchParams.get("lon");
-    const nameParam = searchParams.get("name");
-    const stateParam = searchParams.get("state");
+    const params = new URLSearchParams(searchParamsKey);
+    const presetParam = params.get("preset");
+    const latParam = params.get("lat");
+    const lonParam = params.get("lon");
+    const nameParam = params.get("name");
+    const stateParam = params.get("state");
 
     let initialLoc = defaultPreset.location;
     let initialProf = defaultPreset.profile;
@@ -218,7 +306,7 @@ function AssistantWorkspaceContent() {
       }
     });
   }, [
-    searchParams,
+    searchParamsKey,
     loadTelemetry,
     loadPlan,
     defaultPreset.location,
@@ -228,6 +316,10 @@ function AssistantWorkspaceContent() {
   const handleSelectLocation = async (newLoc: ResolvedLocation) => {
     setLocation(newLoc);
     setActivePresetId(null);
+    setChatMessages([]);
+    setPlan(null);
+    setAnalytics(null);
+    setPlanError(null);
     try {
       localStorage.setItem(STORAGE_KEY_LOCATION, JSON.stringify(newLoc));
     } catch {
@@ -244,6 +336,10 @@ function AssistantWorkspaceContent() {
     setLocation(preset.location);
     setProfile(preset.profile);
     setActivePresetId(preset.id);
+    setChatMessages([]);
+    setPlan(null);
+    setAnalytics(null);
+    setPlanError(null);
 
     try {
       localStorage.setItem(STORAGE_KEY_LOCATION, JSON.stringify(preset.location));
@@ -268,15 +364,45 @@ function AssistantWorkspaceContent() {
     }
   };
 
-  const handleApplyPlan = () => {
+  const handleApplyPlan = (nextProfile?: HouseholdProfile) => {
+    const targetProfile = nextProfile ?? profile;
+    if (snapshot) {
+      loadPlan(snapshot, targetProfile);
+    }
+  };
+
+  const handleRetryPlan = () => {
     if (snapshot) {
       loadPlan(snapshot, profile);
     }
   };
 
+  const handleJumpToTab = (tab: AnalyticalTabKey) => {
+    setActiveTab(tab);
+    if (typeof tabsSectionRef.current?.scrollIntoView === "function") {
+      const prefersReduced =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      tabsSectionRef.current.scrollIntoView({
+        behavior: prefersReduced ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
+  };
+
+  const handleAskCopilot = (prompt: string) => {
+    setCopilotPrefill((prev) => ({
+      text: prompt,
+      seq: (prev?.seq ?? 0) + 1,
+    }));
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsMobileCopilotOpen(true);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F8FA]">
-      <a href="#main-content" className="skip-to-content sr-only focus:not-sr-only">
+    <div className="min-h-screen flex flex-col bg-[#F7F8FA] text-[#0F172A] overflow-x-clip">
+      <a href="#main-content" className="skip-to-content">
         Skip to main content
       </a>
 
@@ -284,63 +410,47 @@ function AssistantWorkspaceContent() {
         {liveAnnouncement}
       </div>
 
-      {/* Back-to-overview micro-navigation strip */}
-      <div className="bg-[#0F172A] text-[#FFFFFF] text-xs px-4 sm:px-6 lg:px-8 py-1.5 border-b border-[#1E293B]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-[#CBD5E1] hover:text-[#FFFFFF] transition-colors font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Overview</span>
-          </Link>
-          <span className="font-mono text-[11px] text-[#94A3B8]">
-            Air Intelligence Workspace
-          </span>
-        </div>
-      </div>
-
       <TopBar
         currentLocation={location}
         onSelectLocation={handleSelectLocation}
-        isLoading={isTelemetryLoading || isPlanLoading}
-      />
-
-      <PresetStrip
         activePresetId={activePresetId}
         onSelectPreset={handleSelectPreset}
-        isLoading={isTelemetryLoading || isPlanLoading}
+        isLoading={isTelemetryLoading}
       />
 
       <main
         id="main-content"
-        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+        className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
       >
         {errorMessage && (
-          <div className="p-4 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] flex items-start justify-between gap-3 text-xs elevation-1">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5" />
+          <div
+            role="alert"
+            className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] flex flex-wrap items-start justify-between gap-3 text-xs elevation-1"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle
+                className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
               <div>
-                <span className="font-bold block text-sm">Telemetry Service Alert</span>
+                <span className="font-semibold block text-sm">
+                  Telemetry Service Alert
+                </span>
                 <p className="mt-0.5">{errorMessage}</p>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => loadTelemetry(location)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] border border-[#FCA5A5] hover:border-[#991B1B] rounded text-[#991B1B] font-semibold shrink-0 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] bg-[#FFFFFF] border border-[#FCA5A5] hover:border-[#991B1B] rounded-lg text-[#991B1B] font-semibold shrink-0 transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Retry</span>
             </button>
           </div>
         )}
 
-        <TelemetryHero
-          snapshot={snapshot}
-          isLoading={isTelemetryLoading}
-          onRefresh={() => loadTelemetry(location)}
-        />
-
+        {/* Collapsible Household Context Bar */}
         <HouseholdProfiler
           profile={profile}
           onChangeProfile={handleChangeProfile}
@@ -348,29 +458,162 @@ function AssistantWorkspaceContent() {
           isPlanLoading={isPlanLoading}
         />
 
-        {snapshot && (
-          <WorkspaceTabs
-            snapshot={snapshot}
-            profile={profile}
-            plan={plan}
-            analytics={analytics}
-            isPlanLoading={isPlanLoading}
-          />
-        )}
-      </main>
+        {/* Two-Column AI-First Split Cockpit */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
+          {/* Left Primary Intelligence Column */}
+          <div className="min-w-0 space-y-6">
+            {/* Hero Band: Live Telemetry Sheet paired with Today's Smart Brief */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+              <div className="xl:col-span-7">
+                <TelemetryHero
+                  snapshot={snapshot}
+                  isLoading={isTelemetryLoading}
+                  onRefresh={() => loadTelemetry(location)}
+                />
+              </div>
 
-      <footer className="border-t border-[#DCE3EC] bg-[#FFFFFF] py-6 px-4 sm:px-6 lg:px-8 mt-12 text-xs text-[#525E70]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-[#0F172A]">VayuPlan</span>
-            <span>•</span>
-            <span>Google Prompt Wars Challenge 6</span>
-            <span>•</span>
-            <span>CPCB NAQI Technical Reference</span>
+              <div className="xl:col-span-5 flex flex-col">
+                {snapshot ? (
+                  <TodaysSmartBrief
+                    snapshot={snapshot}
+                    profile={profile}
+                    plan={plan}
+                    analytics={analytics}
+                    isPlanLoading={isPlanLoading}
+                    planError={planError}
+                    onRetryPlan={handleRetryPlan}
+                    onJumpToTab={handleJumpToTab}
+                    onAskCopilot={handleAskCopilot}
+                  />
+                ) : (
+                  <div className="h-full bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 animate-pulse space-y-4">
+                    <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
+                    <div className="h-4 w-full bg-[#F1F4F8] rounded" />
+                    <div className="h-4 w-5/6 bg-[#F1F4F8] rounded" />
+                    <div className="h-14 bg-[#F1F4F8] rounded-lg" />
+                    <div className="h-14 bg-[#F1F4F8] rounded-lg" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3 Focused Analytical Tabs */}
+            {snapshot && (
+              <div ref={tabsSectionRef}>
+                <WorkspaceTabs
+                  snapshot={snapshot}
+                  profile={profile}
+                  plan={plan}
+                  analytics={analytics}
+                  isPlanLoading={isPlanLoading}
+                  planError={planError}
+                  onRetryPlan={handleRetryPlan}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="text-[11px] text-[#525E70]">
-            Ground Station Telemetry via WAQI & Open-Meteo CAMS • Grounded AI via Gemini
+          {/* Right Persistent AI Copilot Rail (lg+ desktop viewports) */}
+          <aside
+            aria-label="Ask VayuPlan AI Copilot"
+            className="hidden lg:block sticky top-[80px]"
+          >
+            {snapshot ? (
+              <GroundedChat
+                snapshot={snapshot}
+                profile={profile}
+                messages={chatMessages}
+                onMessagesChange={setChatMessages}
+                prefillRequest={copilotPrefill}
+                className="h-[calc(100vh-96px)]"
+              />
+            ) : (
+              <div className="h-[calc(100vh-96px)] bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-2 p-5 animate-pulse space-y-4">
+                <div className="h-10 bg-[#F1F4F8] rounded-lg" />
+                <div className="h-24 bg-[#F1F4F8] rounded-lg" />
+                <div className="h-12 bg-[#F1F4F8] rounded-lg" />
+              </div>
+            )}
+          </aside>
+        </div>
+      </main>
+
+      {/* Mobile / Tablet Floating Copilot Trigger (<1024px) */}
+      {snapshot && (
+        <div className="lg:hidden fixed bottom-5 right-5 z-40">
+          <button
+            ref={mobileTriggerRef}
+            type="button"
+            onClick={() => setIsMobileCopilotOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={isMobileCopilotOpen}
+            className="inline-flex items-center gap-2 rounded-full bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] px-5 min-h-[48px] text-sm font-semibold elevation-3 transition-colors"
+          >
+            <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Ask VayuPlan AI</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile / Tablet Slide-Up Copilot Drawer */}
+      <AnimatePresence>
+        {isMobileCopilotOpen && snapshot && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsMobileCopilotOpen(false);
+                mobileTriggerRef.current?.focus();
+              }
+            }}
+            className="lg:hidden fixed inset-0 z-50 bg-[#0F172A]/45 flex items-end justify-center overscroll-contain"
+          >
+            <motion.div
+              ref={mobileDialogRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ask VayuPlan AI Copilot"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-2xl h-[85vh] rounded-t-2xl overflow-hidden elevation-3"
+            >
+              <GroundedChat
+                snapshot={snapshot}
+                profile={profile}
+                messages={chatMessages}
+                onMessagesChange={setChatMessages}
+                prefillRequest={copilotPrefill}
+                onCloseDrawer={() => {
+                  setIsMobileCopilotOpen(false);
+                  mobileTriggerRef.current?.focus();
+                }}
+                className="h-full rounded-none border-0 rounded-t-2xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <footer className="border-t border-[#DCE3EC] bg-[#FFFFFF] py-6 px-4 sm:px-6 lg:px-8 mt-10 text-xs text-[#525E70]">
+        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-[#0F172A]">VayuPlan</span>
+            <span aria-hidden="true">·</span>
+            <span>CPCB NAQI Technical Reference</span>
+            <span aria-hidden="true">·</span>
+            <span>Informational guidance only, not medical advice</span>
+          </div>
+
+          <div className="text-xs text-[#525E70]">
+            Ground Station Telemetry via WAQI &amp; Open-Meteo CAMS · Grounded AI via Gemini
           </div>
         </div>
       </footer>

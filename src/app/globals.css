@@ -41,6 +41,10 @@
     html {
       scroll-behavior: auto;
     }
+
+    .animate-pulse {
+      animation: none;
+    }
   }
 
   body {
@@ -49,6 +53,11 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: #DBEAFE;
+    color: #0F172A;
   }
 
   /* Accessible focus ring system */
@@ -67,6 +76,25 @@
   font-variant-numeric: tabular-nums;
   -webkit-font-feature-settings: "tnum" 1;
   font-feature-settings: "tnum" 1;
+}
+
+/* Cross-browser hidden scrollbar for horizontal preset/tab strips */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile inline dock override for chart inspection tooltip */
+@media (max-width: 639px) {
+  .chart-tooltip-responsive {
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+  }
 }
 
 /* Subtle 32px Atmospheric Graph-Vellum Drafting Grid */
@@ -98,12 +126,14 @@
 /* Accessible hidden skip link */
 .skip-to-content:focus {
   position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 100;
-  padding: 0.75rem 1.25rem;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 50;
+  padding: 0.5rem 1rem;
   background-color: #0F172A;
   color: #FFFFFF;
   border-radius: 0.5rem;
   font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-level-3);
 }

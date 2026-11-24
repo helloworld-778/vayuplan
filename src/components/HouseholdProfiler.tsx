@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CommuteMode,
   HouseholdProfile,
@@ -15,12 +16,16 @@ import {
   Home,
   Check,
   RotateCcw,
+  ChevronDown,
+  Shield,
+  Flame,
+  Wind,
 } from "lucide-react";
 
 interface HouseholdProfilerProps {
   profile: HouseholdProfile;
   onChangeProfile: (updated: HouseholdProfile) => void;
-  onApplyPlan: () => void;
+  onApplyPlan: (nextProfile?: HouseholdProfile) => void;
   isPlanLoading: boolean;
 }
 
@@ -28,22 +33,22 @@ const PERSONAS: { value: PersonaType; label: string; desc: string }[] = [
   {
     value: "commuter",
     label: "Commuter",
-    desc: "Daily office / university travel",
+    desc: "Daily office or campus travel",
   },
   {
     value: "family_with_kids",
     label: "Family with Kids",
-    desc: "Young lungs & school routines",
+    desc: "Children & school schedules",
   },
   {
     value: "senior_citizen",
     label: "Senior Citizen",
-    desc: "Vulnerable cardiopulmonary health",
+    desc: "Cardiopulmonary protection focus",
   },
   {
     value: "student_athlete",
     label: "Student / Athlete",
-    desc: "High ventilation cardiovascular cardio",
+    desc: "High-ventilation outdoor sessions",
   },
 ];
 
@@ -64,10 +69,17 @@ const MASKS: { value: MaskType; label: string; filtration: string }[] = [
 ];
 
 const WINDOWS: { value: WindowsState; label: string }[] = [
-  { value: "open", label: "Open (85% Infiltration)" },
-  { value: "cracked", label: "Cracked (60% Infiltration)" },
-  { value: "sealed", label: "Sealed (35% Infiltration)" },
+  { value: "open", label: "Open (85% infiltration)" },
+  { value: "cracked", label: "Cracked (60% infiltration)" },
+  { value: "sealed", label: "Sealed (35% infiltration)" },
 ];
+
+function getLabel<T extends string>(
+  items: Array<{ value: T; label: string }>,
+  val: T
+): string {
+  return items.find((i) => i.value === val)?.label ?? val;
+}
 
 export function HouseholdProfiler({
   profile,
@@ -77,11 +89,8 @@ export function HouseholdProfiler({
 }: HouseholdProfilerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Local draft state to avoid firing API calls on every tick
   const [draft, setDraft] = useState<HouseholdProfile>(profile);
 
-  // Sync draft when external profile changes (e.g. preset clicked)
   useEffect(() => {
     setDraft(profile);
     setHasChanges(false);
@@ -101,7 +110,8 @@ export function HouseholdProfiler({
   const handleApply = () => {
     onChangeProfile(draft);
     setHasChanges(false);
-    onApplyPlan();
+    setIsExpanded(false);
+    onApplyPlan(draft);
   };
 
   const handleReset = () => {
@@ -109,304 +119,414 @@ export function HouseholdProfiler({
     setHasChanges(false);
   };
 
+  const personaLabel = getLabel(PERSONAS, draft.persona);
+  const commuteLabel = getLabel(COMMUTE_MODES, draft.currentCommuteMode);
+  const maskLabel = getLabel(MASKS, draft.maskType);
+
   return (
     <section
-      aria-label="Household and lifestyle configuration"
-      className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg shadow-xs overflow-hidden"
+      aria-label="Household context and exposure controls"
+      className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden"
     >
-      {/* Header bar */}
-      <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#EAE7DF] bg-[#FAF9F6]">
-        <div className="flex items-center gap-2.5">
-          <SlidersHorizontal className="w-4 h-4 text-[#14181F]" />
-          <div>
-            <h2 className="text-sm font-bold text-[#14181F]">
-              Household & Lifestyle Profiler
-            </h2>
-            <p className="text-xs text-[#5E6470]">
-              Personalized exposure physics: {draft.persona.replace("_", " ")} • {draft.currentCommuteMode.replace("_", " ")} ({draft.commuteDistanceKm} km)
-            </p>
-          </div>
+      {/* Compact Household Context Bar */}
+      <div className="px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#FFFFFF]">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0F172A] mr-1">
+            <SlidersHorizontal
+              className="w-3.5 h-3.5 text-[#334155]"
+              aria-hidden="true"
+            />
+            <span>Context</span>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded bg-[#F1F4F8] px-2.5 py-1 text-xs font-medium text-[#0F172A]">
+            {personaLabel}
+            {draft.hasRespiratorySensitivity && (
+              <HeartPulse
+                role="img"
+                aria-label="Respiratory sensitivity enabled"
+                className="w-3.5 h-3.5 text-[#DC2626]"
+              />
+            )}
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded bg-[#F1F4F8] px-2.5 py-1 text-xs text-[#334155]">
+            <Car className="w-3.5 h-3.5 text-[#525E70]" aria-hidden="true" />
+            <span>{commuteLabel}</span>
+            <span className="font-mono tabular-nums font-semibold text-[#0F172A]">
+              {draft.commuteDistanceKm} km
+            </span>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded bg-[#F1F4F8] px-2.5 py-1 text-xs text-[#334155]">
+            <Shield className="w-3.5 h-3.5 text-[#525E70]" aria-hidden="true" />
+            <span>Mask: {maskLabel}</span>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded bg-[#F1F4F8] px-2.5 py-1 text-xs text-[#334155] capitalize">
+            <Home className="w-3.5 h-3.5 text-[#525E70]" aria-hidden="true" />
+            <span>{draft.windowsState} windows</span>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded bg-[#F1F4F8] px-2.5 py-1 text-xs text-[#334155]">
+            <Wind className="w-3.5 h-3.5 text-[#525E70]" aria-hidden="true" />
+            <span>{draft.hasAirPurifier ? "HEPA On" : "No Purifier"}</span>
+          </span>
+
+          {draft.usesIncenseOrSolidFuel && (
+            <span className="inline-flex items-center gap-1.5 rounded border bg-[#FFFBEB] border-[#FCD34D] text-[#92400E] font-medium px-2.5 py-1 text-xs">
+              <Flame className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Incense Active</span>
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {hasChanges && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="text-xs text-[#6E7582] hover:text-[#14181F] flex items-center gap-1 px-2 py-1 rounded"
-              title="Discard unsaved changes"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#334155] hover:text-[#0F172A] px-3 min-h-[40px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Reset</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={isPlanLoading}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 min-h-[40px] rounded-lg bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] transition-colors disabled:opacity-55"
+              >
+                <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Apply Changes</span>
+              </button>
+            </>
           )}
 
           <button
             type="button"
-            onClick={handleApply}
-            disabled={isPlanLoading}
-            className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              hasChanges
-                ? "bg-[#14181F] text-[#FFFFFF] hover:bg-[#2B303B] shadow-xs animate-pulse"
-                : "bg-[#EFECE6] text-[#474D58] hover:bg-[#E5E2D9]"
-            }`}
+            aria-expanded={isExpanded}
+            aria-controls="household-context-drawer"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 min-h-[40px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] text-[#0F172A] hover:border-[#1D4ED8] transition-colors"
           >
-            <Check className="w-3.5 h-3.5" />
-            <span>Update Plan</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs font-medium text-[#5E6470] hover:text-[#14181F] px-2 py-1 underline decoration-dotted"
-          >
-            {isExpanded ? "Collapse" : "Edit Settings"}
+            <span>{isExpanded ? "Close" : "Edit Context"}</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-[#525E70] transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
 
-      {/* Expandable Controls Panel */}
-      {isExpanded && (
-        <div className="p-5 sm:p-6 space-y-6 text-xs">
-          {/* Persona Selection */}
-          <div>
-            <label className="font-bold text-[#14181F] block mb-2">
-              Persona & Activity Profile
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-              {PERSONAS.map((p) => {
-                const isSelected = draft.persona === p.value;
-                return (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => updateDraft("persona", p.value)}
-                    className={`p-3 rounded border text-left transition-all ${
-                      isSelected
-                        ? "bg-[#F7F6F2] border-[#14181F] ring-1 ring-[#14181F]"
-                        : "bg-[#FFFFFF] border-[#DDD9CE] hover:border-[#8C93A0]"
-                    }`}
-                  >
-                    <div className="font-bold text-[#14181F]">{p.label}</div>
-                    <div className="text-[11px] text-[#5E6470] mt-0.5">{p.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Health Sensitivity Switch */}
-          <div className="flex items-center justify-between p-3.5 rounded border border-[#E2DFD6] bg-[#FAF8F5]">
-            <div className="flex items-center gap-3">
-              <HeartPulse className="w-5 h-5 text-rose-600 shrink-0" />
+      {/* Collapsible Controls Drawer */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            id="household-context-drawer"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            className="border-t border-[#DCE3EC] bg-[#F7F8FA]"
+          >
+            <div className="p-5 sm:p-6 space-y-6">
+              {/* Persona Selection */}
               <div>
-                <span className="font-bold text-[#14181F] block">
-                  Cardiopulmonary & Respiratory Sensitivity
-                </span>
-                <span className="text-[11px] text-[#5E6470]">
-                  Flags asthma, COPD, bronchitis, cardiovascular conditions, elderly, or toddlers (tightens outdoor thresholds).
-                </span>
+                <h2 className="text-xs font-semibold text-[#0F172A] mb-2.5">
+                  Persona &amp; Activity Profile
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {PERSONAS.map((p) => {
+                    const isSelected = draft.persona === p.value;
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => updateDraft("persona", p.value)}
+                        className={`p-3 min-h-[44px] rounded-lg border text-left transition-colors ${
+                          isSelected
+                            ? "bg-[#EFF6FF] border-[#1D4ED8] text-[#0F172A]"
+                            : "bg-[#FFFFFF] border-[#DCE3EC] hover:border-[#64748B] text-[#334155]"
+                        }`}
+                      >
+                        <div className="text-sm font-semibold text-[#0F172A]">
+                          {p.label}
+                        </div>
+                        <div className="text-xs text-[#525E70] mt-0.5">
+                          {p.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            <button
-              type="button"
-              role="switch"
-              aria-checked={draft.hasRespiratorySensitivity}
-              onClick={() =>
-                updateDraft(
-                  "hasRespiratorySensitivity",
-                  !draft.hasRespiratorySensitivity
-                )
-              }
-              className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
-                draft.hasRespiratorySensitivity
-                  ? "bg-rose-600"
-                  : "bg-[#DCD8CF]"
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full bg-[#FFFFFF] absolute top-1 transition-transform ${
-                  draft.hasRespiratorySensitivity ? "left-6" : "left-1"
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Commute Parameters */}
-          <div className="border-t border-[#EAE7DF] pt-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Car className="w-4 h-4 text-[#14181F]" />
-              <label className="font-bold text-[#14181F]">
-                Commute & Transit Routine
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Distance Slider */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE]">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-medium text-[#2B303B]">
-                    One-Way Commute
-                  </span>
-                  <span className="font-mono font-bold text-sm text-[#14181F]">
-                    {draft.commuteDistanceKm} km
-                  </span>
+              {/* Health Sensitivity Switch */}
+              <div className="flex items-center justify-between gap-4 pt-5 border-t border-[#DCE3EC]">
+                <div className="flex items-center gap-3">
+                  <HeartPulse
+                    className="w-5 h-5 text-[#DC2626] shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-[#0F172A] block">
+                      Cardiopulmonary &amp; Respiratory Sensitivity
+                    </span>
+                    <span className="text-xs text-[#525E70]">
+                      Tightens outdoor safe thresholds for asthma, COPD, children, or older adults.
+                    </span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="60"
-                  step="1"
-                  value={draft.commuteDistanceKm}
-                  disabled={draft.currentCommuteMode === "work_from_home"}
-                  onChange={(e) =>
-                    updateDraft("commuteDistanceKm", parseInt(e.target.value, 10))
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={draft.hasRespiratorySensitivity}
+                  aria-label="Cardiopulmonary and respiratory sensitivity"
+                  onClick={() =>
+                    updateDraft(
+                      "hasRespiratorySensitivity",
+                      !draft.hasRespiratorySensitivity
+                    )
                   }
-                  className="w-full accent-[#14181F] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="One-way commute distance in kilometers"
-                />
-                <div className="flex justify-between text-[10px] text-[#7A8290] mt-1 font-mono">
-                  <span>0 km (WFH)</span>
-                  <span>30 km</span>
-                  <span>60 km</span>
+                  className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
+                    draft.hasRespiratorySensitivity
+                      ? "bg-[#1D4ED8]"
+                      : "bg-[#64748B]"
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full bg-[#FFFFFF] absolute top-1 transition-transform ${
+                      draft.hasRespiratorySensitivity ? "left-6" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Commute Parameters */}
+              <div className="border-t border-[#DCE3EC] pt-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Car className="w-4 h-4 text-[#334155]" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold text-[#0F172A]">
+                    Commute &amp; Transit Routine
+                  </h3>
                 </div>
-                {draft.currentCommuteMode === "work_from_home" && (
-                  <p className="text-[10px] text-[#5E6470] mt-1">
-                    Commute disabled for remote / work-from-home routine (0 km).
-                  </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-lg border border-[#DCE3EC]">
+                    <div className="flex justify-between items-center mb-2">
+                      <label
+                        htmlFor="commute-distance-slider"
+                        className="text-xs font-medium text-[#334155]"
+                      >
+                        One-Way Commute
+                      </label>
+                      <span className="font-mono tabular-nums font-bold text-sm text-[#0F172A]">
+                        {draft.commuteDistanceKm} km
+                      </span>
+                    </div>
+                    <input
+                      id="commute-distance-slider"
+                      type="range"
+                      min="0"
+                      max="60"
+                      step="1"
+                      value={draft.commuteDistanceKm}
+                      disabled={draft.currentCommuteMode === "work_from_home"}
+                      onChange={(e) =>
+                        updateDraft(
+                          "commuteDistanceKm",
+                          parseInt(e.target.value, 10)
+                        )
+                      }
+                      className="w-full accent-[#1D4ED8] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <div className="flex justify-between text-xs text-[#525E70] mt-1.5 font-mono tabular-nums">
+                      <span>0 km</span>
+                      <span>30 km</span>
+                      <span>60 km</span>
+                    </div>
+                    {draft.currentCommuteMode === "work_from_home" && (
+                      <p className="text-xs text-[#525E70] mt-1.5">
+                        Locked to 0 km for Remote / WFH schedule.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-lg border border-[#DCE3EC]">
+                    <label
+                      htmlFor="commute-mode-select"
+                      className="text-xs font-medium text-[#334155] block mb-1.5"
+                    >
+                      Primary Commute Mode
+                    </label>
+                    <select
+                      id="commute-mode-select"
+                      value={draft.currentCommuteMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as CommuteMode;
+                        if (mode === "work_from_home") {
+                          setDraft((prev) => ({
+                            ...prev,
+                            currentCommuteMode: mode,
+                            commuteDistanceKm: 0,
+                          }));
+                          setHasChanges(true);
+                        } else {
+                          setDraft((prev) => ({
+                            ...prev,
+                            currentCommuteMode: mode,
+                            commuteDistanceKm:
+                              prev.commuteDistanceKm === 0
+                                ? 10
+                                : prev.commuteDistanceKm,
+                          }));
+                          setHasChanges(true);
+                        }
+                      }}
+                      className="w-full py-2 px-2.5 min-h-[44px] bg-[#F1F4F8] border border-[#64748B]/70 rounded-md text-base sm:text-xs text-[#0F172A] font-medium focus:border-[#1D4ED8]"
+                    >
+                      {COMMUTE_MODES.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-lg border border-[#DCE3EC]">
+                    <label
+                      htmlFor="mask-type-select"
+                      className="text-xs font-medium text-[#334155] block mb-1.5"
+                    >
+                      Transit Mask Type
+                    </label>
+                    <select
+                      id="mask-type-select"
+                      value={draft.maskType}
+                      onChange={(e) =>
+                        updateDraft("maskType", e.target.value as MaskType)
+                      }
+                      className="w-full py-2 px-2.5 min-h-[44px] bg-[#F1F4F8] border border-[#64748B]/70 rounded-md text-base sm:text-xs text-[#0F172A] font-medium focus:border-[#1D4ED8]"
+                    >
+                      {MASKS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label} ({m.filtration} efficiency)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Indoor Environment */}
+              <div className="border-t border-[#DCE3EC] pt-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Home className="w-4 h-4 text-[#334155]" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold text-[#0F172A]">
+                    Indoor Building Envelope &amp; Air Habits
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-lg border border-[#DCE3EC]">
+                    <label
+                      htmlFor="window-state-select"
+                      className="text-xs font-medium text-[#334155] block mb-1.5"
+                    >
+                      Window / Balcony Sealing
+                    </label>
+                    <select
+                      id="window-state-select"
+                      value={draft.windowsState}
+                      onChange={(e) =>
+                        updateDraft(
+                          "windowsState",
+                          e.target.value as WindowsState
+                        )
+                      }
+                      className="w-full py-2 px-2.5 min-h-[44px] bg-[#F1F4F8] border border-[#64748B]/70 rounded-md text-base sm:text-xs text-[#0F172A] font-medium focus:border-[#1D4ED8]"
+                    >
+                      {WINDOWS.map((w) => (
+                        <option key={w.value} value={w.value}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <label className="bg-[#FFFFFF] p-3.5 min-h-[44px] rounded-lg border border-[#DCE3EC] flex items-center justify-between gap-3 cursor-pointer">
+                    <div>
+                      <span className="text-xs font-semibold text-[#0F172A] block">
+                        HEPA Air Purifier
+                      </span>
+                      <span className="text-xs text-[#525E70]">
+                        Active indoor particle filtration
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={draft.hasAirPurifier}
+                      onChange={(e) =>
+                        updateDraft("hasAirPurifier", e.target.checked)
+                      }
+                      className="w-5 h-5 accent-[#1D4ED8] rounded cursor-pointer shrink-0"
+                    />
+                  </label>
+
+                  <label className="bg-[#FFFFFF] p-3.5 min-h-[44px] rounded-lg border border-[#DCE3EC] flex items-center justify-between gap-3 cursor-pointer">
+                    <div>
+                      <span className="text-xs font-semibold text-[#0F172A] block">
+                        Incense / Agarbatti / Coil
+                      </span>
+                      <span className="text-xs text-[#525E70]">
+                        +45 µg/m³ internal combustion load
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={draft.usesIncenseOrSolidFuel}
+                      onChange={(e) =>
+                        updateDraft("usesIncenseOrSolidFuel", e.target.checked)
+                      }
+                      className="w-5 h-5 accent-[#1D4ED8] rounded cursor-pointer shrink-0"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Drawer Bottom Apply / Reset Controls */}
+              <div className="pt-4 border-t border-[#DCE3EC] flex flex-wrap items-center justify-end gap-2">
+                {hasChanges && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#334155] hover:text-[#0F172A] px-3.5 min-h-[44px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Reset</span>
+                  </button>
                 )}
-              </div>
 
-              {/* Commute Mode */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE]">
-                <label htmlFor="commute-mode-select" className="text-xs font-medium text-[#2B303B] block mb-1.5">
-                  Primary Commute Mode
-                </label>
-                <select
-                  id="commute-mode-select"
-                  value={draft.currentCommuteMode}
-                  onChange={(e) => {
-                    const mode = e.target.value as CommuteMode;
-                    if (mode === "work_from_home") {
-                      setDraft((prev) => ({
-                        ...prev,
-                        currentCommuteMode: mode,
-                        commuteDistanceKm: 0,
-                      }));
-                      setHasChanges(true);
-                    } else {
-                      setDraft((prev) => ({
-                        ...prev,
-                        currentCommuteMode: mode,
-                        commuteDistanceKm: prev.commuteDistanceKm === 0 ? 10 : prev.commuteDistanceKm,
-                      }));
-                      setHasChanges(true);
-                    }
-                  }}
-                  className="w-full py-1.5 px-2 bg-[#FFFFFF] border border-[#DDD9CE] rounded text-xs text-[#14181F] font-medium focus:outline-none focus:border-[#14181F]"
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={isPlanLoading}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 min-h-[44px] rounded-lg bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] transition-colors disabled:opacity-55"
                 >
-                  {COMMUTE_MODES.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mask Type */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE]">
-                <label className="text-xs font-medium text-[#2B303B] block mb-1.5">
-                  Transit Mask Type
-                </label>
-                <select
-                  value={draft.maskType}
-                  onChange={(e) =>
-                    updateDraft("maskType", e.target.value as MaskType)
-                  }
-                  className="w-full py-1.5 px-2 bg-[#FFFFFF] border border-[#DDD9CE] rounded text-xs text-[#14181F] font-medium focus:outline-none focus:border-[#14181F]"
-                >
-                  {MASKS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label} ({m.filtration} efficiency)
-                    </option>
-                  ))}
-                </select>
+                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Apply Changes</span>
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Indoor Environment */}
-          <div className="border-t border-[#EAE7DF] pt-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Home className="w-4 h-4 text-[#14181F]" />
-              <label className="font-bold text-[#14181F]">
-                Indoor Building Envelope & Air Habits
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Window State */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE]">
-                <label className="text-xs font-medium text-[#2B303B] block mb-1.5">
-                  Window / Balcony Sealing
-                </label>
-                <select
-                  value={draft.windowsState}
-                  onChange={(e) =>
-                    updateDraft("windowsState", e.target.value as WindowsState)
-                  }
-                  className="w-full py-1.5 px-2 bg-[#FFFFFF] border border-[#DDD9CE] rounded text-xs text-[#14181F] font-medium focus:outline-none focus:border-[#14181F]"
-                >
-                  {WINDOWS.map((w) => (
-                    <option key={w.value} value={w.value}>
-                      {w.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Air Purifier Toggle */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE] flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-medium text-[#2B303B] block">
-                    HEPA Air Purifier
-                  </span>
-                  <span className="text-[10px] text-[#6E7582]">
-                    Active room filtration
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={draft.hasAirPurifier}
-                  onChange={(e) => updateDraft("hasAirPurifier", e.target.checked)}
-                  className="w-4 h-4 accent-[#14181F] rounded cursor-pointer"
-                />
-              </div>
-
-              {/* Incense / Solid Fuel Toggle */}
-              <div className="bg-[#FAF9F6] p-3.5 rounded border border-[#DDD9CE] flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-medium text-[#2B303B] block">
-                    Incense / Agarbatti / Coil
-                  </span>
-                  <span className="text-[10px] text-[#6E7582]">
-                    +45 µg/m³ internal emission
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={draft.usesIncenseOrSolidFuel}
-                  onChange={(e) =>
-                    updateDraft("usesIncenseOrSolidFuel", e.target.checked)
-                  }
-                  className="w-4 h-4 accent-[#14181F] rounded cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

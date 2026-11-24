@@ -33,26 +33,30 @@ export function IndoorActionLab({
   const { indoorAir, exposureWindows } = analytics;
   const indoorTheme = getNaqiTheme(indoorAir.estimatedIndoorCategory);
   const outdoorTheme = getNaqiTheme(snapshot.category);
+  const IndoorIcon = indoorTheme.icon;
+  const OutdoorIcon = outdoorTheme.icon;
 
-  // Ventilation Directive Styling
   const getDirectiveBadge = () => {
     switch (indoorAir.ventilationDirective) {
       case "OPEN_WINDOWS":
         return {
           label: "Open Windows for Natural Aeration",
-          badgeClass: "bg-emerald-50 text-emerald-950 border-emerald-300",
+          containerClass: "bg-[#ECFDF5] text-[#065F46] border-[#6EE7B7]",
+          cardBorder: "border-[#6EE7B7]",
           icon: Wind,
         };
       case "BRIEF_VENTILATION":
         return {
           label: "Brief Controlled Aeration (15 min)",
-          badgeClass: "bg-amber-50 text-amber-950 border-amber-300",
+          containerClass: "bg-[#FFFBEB] text-[#92400E] border-[#FCD34D]",
+          cardBorder: "border-[#FCD34D]",
           icon: AlertTriangle,
         };
       case "SEAL_WINDOWS":
         return {
           label: "Seal All External Windows & Balconies",
-          badgeClass: "bg-rose-50 text-rose-950 border-rose-300",
+          containerClass: "bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]",
+          cardBorder: "border-[#FCA5A5]",
           icon: Lock,
         };
     }
@@ -63,148 +67,189 @@ export function IndoorActionLab({
 
   return (
     <div className="space-y-6">
-      {/* Side-by-Side Comparison: Outdoor vs Indoor */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Ambient Outdoor Box */}
-        <div className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-lg p-5 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-[#5E6470] mb-2">
-            <span className="font-bold text-[#14181F]">Ambient Outdoor Atmosphere</span>
-            <span className="font-mono text-[11px]">{snapshot.location.name}</span>
+      {/* Side-by-Side Outdoor vs Indoor Ledger */}
+      <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC] overflow-hidden">
+        <div className="p-5 flex flex-col justify-between gap-3">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#525E70] mb-2">
+              <span className="font-semibold text-[#0F172A]">
+                Ambient Outdoor Atmosphere
+              </span>
+              <span className="font-medium text-[#525E70]">
+                {snapshot.location.name}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-3 my-2">
+              <span className="font-display text-4xl font-bold tabular-nums text-[#0F172A]">
+                {snapshot.naqi}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded border font-semibold ${outdoorTheme.badgeBg}`}
+              >
+                <OutdoorIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>{snapshot.category}</span>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-baseline gap-3 my-2">
-            <span className="text-4xl font-extrabold font-mono tabular-nums text-[#14181F]">
-              {snapshot.naqi}
+          <div className="text-xs text-[#525E70] flex items-center justify-between pt-3 border-t border-[#DCE3EC]">
+            <span>
+              PM2.5:{" "}
+              <strong className="font-mono tabular-nums text-[#0F172A]">
+                {snapshot.pollutants.pm25 ?? 0} µg/m³
+              </strong>
             </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded border font-semibold ${outdoorTheme.badgeBg}`}
-            >
-              {snapshot.category}
+            <span>
+              Dominant:{" "}
+              <strong className="font-mono uppercase text-[#0F172A]">
+                {snapshot.dominantPollutant}
+              </strong>
             </span>
-          </div>
-
-          <div className="text-xs text-[#5E6470] flex items-center justify-between pt-3 border-t border-[#EAE7DF]">
-            <span>PM2.5: <strong className="font-mono text-[#14181F]">{snapshot.pollutants.pm25 ?? 0} µg/m³</strong></span>
-            <span>Dominant: <strong className="font-mono uppercase text-[#14181F]">{snapshot.dominantPollutant}</strong></span>
           </div>
         </div>
 
-        {/* Estimated Indoor Box */}
-        <div className="bg-[#FFFFFF] border border-[#14181F] rounded-lg p-5 shadow-xs relative">
-          <div className="flex items-center justify-between text-xs text-[#5E6470] mb-2">
-            <span className="font-bold text-[#14181F] flex items-center gap-1.5">
-              <Home className="w-3.5 h-3.5 text-[#14181F]" />
-              Estimated Indoor Microenvironment
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#FAF9F6] border border-[#DDD9CE]">
-              Envelope Physics
-            </span>
+        <div className="p-5 flex flex-col justify-between gap-3">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#525E70] mb-2">
+              <span className="font-semibold text-[#0F172A] flex items-center gap-1.5">
+                <Home className="w-3.5 h-3.5 text-[#334155]" aria-hidden="true" />
+                <span>Estimated Indoor Microenvironment</span>
+              </span>
+              <span className="text-xs text-[#525E70] font-medium">
+                Envelope Physics
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-3 my-2">
+              <span className="font-display text-4xl font-bold tabular-nums text-[#0F172A]">
+                {indoorAir.estimatedIndoorNaqi}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded border font-semibold ${indoorTheme.badgeBg}`}
+              >
+                <IndoorIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>{indoorAir.estimatedIndoorCategory}</span>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-baseline gap-3 my-2">
-            <span className="text-4xl font-extrabold font-mono tabular-nums text-[#14181F]">
-              {indoorAir.estimatedIndoorNaqi}
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded border font-semibold ${indoorTheme.badgeBg}`}
-            >
-              {indoorAir.estimatedIndoorCategory}
-            </span>
-          </div>
+          <div className="space-y-2.5 pt-3 border-t border-[#DCE3EC]">
+            <div className="text-xs text-[#525E70] flex items-center justify-between">
+              <span>
+                Indoor PM2.5:{" "}
+                <strong className="font-mono tabular-nums text-[#0F172A]">
+                  {indoorAir.estimatedIndoorPm25} µg/m³
+                </strong>
+              </span>
+              <span>
+                Envelope:{" "}
+                <strong className="capitalize text-[#0F172A]">
+                  {profile.windowsState}
+                </strong>
+              </span>
+            </div>
 
-          <div className="text-xs text-[#5E6470] flex items-center justify-between pt-3 border-t border-[#EAE7DF]">
-            <span>Indoor PM2.5: <strong className="font-mono text-[#14181F]">{indoorAir.estimatedIndoorPm25} µg/m³</strong></span>
-            <span className="text-[11px]">
-              Envelope: <strong className="capitalize text-[#14181F]">{profile.windowsState}</strong>
-            </span>
-          </div>
-
-          {/* Model disclaimer note */}
-          <div className="mt-3 text-[10px] text-[#7A8290] flex items-center gap-1 bg-[#FAF9F6] p-1.5 rounded border border-[#EFECE6]">
-            <Info className="w-3 h-3 shrink-0" />
-            <span>Mathematical estimate based on residential infiltration factors, not a hardware sensor.</span>
+            <div className="text-xs text-[#525E70] flex items-center gap-1.5 bg-[#F1F4F8] px-2.5 py-2 rounded-md">
+              <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Mathematical estimate based on residential infiltration factors, not a physical sensor.
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Prominent Ventilation Directive Banner */}
-      <div className={`p-4 sm:p-5 rounded-lg border ${directiveConfig.badgeClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs`}>
+      {/* Ventilation Directive Banner (Zero Eyebrow above H3) */}
+      <div
+        className={`p-5 rounded-xl border ${directiveConfig.containerClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
+      >
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded bg-[#FFFFFF] flex items-center justify-center shrink-0 border border-current shadow-2xs">
-            <DirectiveIcon className="w-5 h-5" />
+          <div
+            className={`w-9 h-9 rounded-lg bg-[#FFFFFF] flex items-center justify-center shrink-0 border ${directiveConfig.cardBorder}`}
+          >
+            <DirectiveIcon className="w-4 h-4" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider font-mono font-bold opacity-80">
-              Ventilation Directive
-            </div>
-            <h3 className="text-base font-bold mt-0.5">
+            <h3 className="font-display text-base font-semibold">
               {directiveConfig.label}
             </h3>
-            <p className="text-xs mt-1 leading-relaxed opacity-90 max-w-2xl">
+            <p className="text-xs mt-1 leading-relaxed max-w-2xl">
               {indoorAir.ventilationAdvisory}
             </p>
           </div>
         </div>
 
         {exposureWindows.bestVentilationWindow && (
-          <div className="bg-[#FFFFFF] p-3 rounded border border-current text-xs shrink-0 sm:text-right">
-            <div className="text-[10px] font-mono text-[#6E7582] uppercase">
+          <div
+            className={`bg-[#FFFFFF] p-3 rounded-lg border ${directiveConfig.cardBorder} text-xs shrink-0 sm:text-right`}
+          >
+            <div className="text-xs text-[#525E70] font-medium">
               Optimal Aeration Window
             </div>
-            <div className="text-sm font-bold font-mono text-[#14181F]">
-              {exposureWindows.bestVentilationWindow.startHour.toString().padStart(2, "0")}:00 – {exposureWindows.bestVentilationWindow.endHour.toString().padStart(2, "0")}:00
+            <div className="text-sm font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">
+              {exposureWindows.bestVentilationWindow.startHour
+                .toString()
+                .padStart(2, "0")}
+              :00 –{" "}
+              {exposureWindows.bestVentilationWindow.endHour
+                .toString()
+                .padStart(2, "0")}
+              :00
             </div>
-            <div className="text-[10px] text-emerald-800 font-medium">
+            <div className="text-xs font-mono tabular-nums text-[#065F46] font-semibold">
               Avg NAQI: {exposureWindows.bestVentilationWindow.avgNaqi}
             </div>
           </div>
         )}
       </div>
 
-      {/* Quantified What-If Interventions Cards */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[#14181F]">
+      {/* Quantified What-If Interventions Ledger */}
+      <section className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#DCE3EC] flex flex-wrap items-center justify-between gap-2 bg-[#F7F8FA]">
+          <h3 className="font-display text-base font-semibold text-[#0F172A]">
             Simulated Home Air Interventions
           </h3>
-          <span className="text-xs text-[#6E7582]">
-            What-if simulations vs. current indoor PM2.5 ({indoorAir.estimatedIndoorPm25} µg/m³)
+          <span className="text-xs text-[#525E70] font-mono tabular-nums">
+            Baseline indoor PM2.5: {indoorAir.estimatedIndoorPm25} µg/m³
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC]">
           {indoorAir.interventions.map((item) => (
             <div
               key={item.id}
-              className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-md p-4 transition-all hover:border-[#14181F] text-xs flex flex-col justify-between shadow-2xs"
+              className="p-5 text-xs flex flex-col justify-between gap-4"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <h4 className="font-bold text-[#14181F] text-sm">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h4 className="font-semibold text-[#0F172A] text-sm">
                     {item.title}
                   </h4>
-                  <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-950 px-2 py-0.5 rounded bg-emerald-50 border border-emerald-300 text-xs">
-                    <ArrowDownRight className="w-3.5 h-3.5" />
+                  <span className="inline-flex items-center gap-1 font-mono tabular-nums font-bold text-[#065F46] px-2 py-0.5 rounded bg-[#ECFDF5] border border-[#6EE7B7] text-xs shrink-0">
+                    <ArrowDownRight className="w-3.5 h-3.5" aria-hidden="true" />
                     -{item.percentReduction}%
                   </span>
                 </div>
 
-                <p className="text-[#3A404D] leading-relaxed mb-3">
+                <p className="text-[#334155] leading-relaxed">
                   {item.explanation}
                 </p>
               </div>
 
-              <div className="pt-2.5 border-t border-[#EAE7DF] flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-[#6E7582] block text-[10px]">Projected Indoor</span>
-                  <span className="font-bold font-mono text-[#14181F] text-sm">
+              <div className="pt-3 border-t border-[#DCE3EC] grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-[#F1F4F8] p-2.5 rounded-md">
+                  <span className="text-[#525E70] block">Projected Indoor</span>
+                  <span className="font-bold font-mono tabular-nums text-[#0F172A] text-sm">
                     {item.projectedIndoorPm25} µg/m³
                   </span>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-[#6E7582] block text-[10px]">Net Particulate Saved</span>
-                  <span className="font-bold font-mono text-emerald-950 text-sm">
+                <div className="bg-[#F1F4F8] p-2.5 rounded-md">
+                  <span className="text-[#525E70] block">
+                    Net Particulate Saved
+                  </span>
+                  <span className="font-bold font-mono tabular-nums text-[#065F46] text-sm">
                     {item.pm25SavedUgM3} µg/m³
                   </span>
                 </div>
@@ -212,34 +257,38 @@ export function IndoorActionLab({
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Indoor Hacks from Plan */}
+      {/* Household Clean-Air Protocols */}
       {plan.indoorHacks.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h3 className="text-sm font-bold text-[#14181F]">
-            Household Clean-Air Protocols
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#DCE3EC] bg-[#F7F8FA]">
+            <h3 className="font-display text-base font-semibold text-[#0F172A]">
+              Household Clean-Air Protocols
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC]">
             {plan.indoorHacks.map((hack, idx) => (
               <div
                 key={idx}
-                className="bg-[#FFFFFF] border border-[#E2DFD6] rounded-md p-4 text-xs"
+                className="p-4 sm:p-5 text-xs flex flex-col justify-between gap-3"
               >
-                <div className="font-bold text-[#14181F] text-sm mb-1">
-                  {hack.title}
+                <div>
+                  <h4 className="font-semibold text-[#0F172A] text-sm mb-1.5">
+                    {hack.title}
+                  </h4>
+                  <p className="text-[#334155] leading-relaxed">{hack.action}</p>
                 </div>
-                <p className="text-[#2B303B] mb-2 leading-relaxed">
-                  {hack.action}
-                </p>
-                <div className="pt-2 border-t border-[#EAE7DF] text-[#474D58]">
-                  <span className="font-semibold text-[#14181F]">Direct Impact: </span>
-                  <span className="text-emerald-950 font-medium">{hack.directImpact}</span>
+                <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
+                  <span className="font-semibold">Direct Impact: </span>
+                  <span className="text-[#065F46] font-medium">
+                    {hack.directImpact}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

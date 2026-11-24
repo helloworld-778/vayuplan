@@ -1,17 +1,31 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Navigation, Loader2, Wind, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import {
+  Search,
+  MapPin,
+  Navigation,
+  Loader2,
+  Wind,
+  AlertCircle,
+  ArrowLeft,
+} from "lucide-react";
 import { ResolvedLocation } from "@/types/air-quality";
+import { EVALUATOR_PRESETS, EvaluatorPreset } from "@/lib/presets";
 
 interface TopBarProps {
   currentLocation?: ResolvedLocation;
   onSelectLocation: (loc: ResolvedLocation) => void;
+  activePresetId?: string | null;
+  onSelectPreset?: (preset: EvaluatorPreset) => void;
   isLoading: boolean;
 }
 
 export function TopBar({
   onSelectLocation,
+  activePresetId = null,
+  onSelectPreset,
   isLoading,
 }: TopBarProps) {
   const [query, setQuery] = useState("");
@@ -23,8 +37,8 @@ export function TopBar({
   const [isLocating, setIsLocating] = useState(false);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const presets = Object.values(EVALUATOR_PRESETS);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -38,11 +52,11 @@ export function TopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced search with AbortController for race condition protection
   useEffect(() => {
     if (!query || query.trim().length < 2) {
       setSuggestions([]);
       setIsOpen(false);
+      setHighlightedIndex(-1);
       return;
     }
 
@@ -50,9 +64,10 @@ export function TopBar({
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/locations?q=${encodeURIComponent(query.trim())}`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(
+          `/api/locations?q=${encodeURIComponent(query.trim())}`,
+          { signal: controller.signal }
+        );
         if (res.ok) {
           const data = await res.json();
           setSuggestions(data.results || []);
@@ -74,7 +89,6 @@ export function TopBar({
     };
   }, [query]);
 
-  // GPS geolocation handler
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
       setGeoError("Geolocation is not supported by your browser.");
@@ -121,6 +135,10 @@ export function TopBar({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsOpen(false);
+      return;
+    }
     if (!isOpen || suggestions.length === 0) return;
 
     if (e.key === "ArrowDown") {
@@ -128,131 +146,198 @@ export function TopBar({
       setHighlightedIndex((prev) => (prev + 1) % suggestions.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+      setHighlightedIndex((prev) =>
+        prev <= 0 ? suggestions.length - 1 : prev - 1
+      );
     } else if (e.key === "Enter" && highlightedIndex >= 0) {
       e.preventDefault();
       const selected = suggestions[highlightedIndex];
       onSelectLocation(selected);
       setQuery("");
       setIsOpen(false);
-    } else if (e.key === "Escape") {
-      setIsOpen(false);
+      setHighlightedIndex(-1);
     }
   };
 
+  const activeOptionId =
+    isOpen && highlightedIndex >= 0 && suggestions[highlightedIndex]
+      ? `location-option-${highlightedIndex}`
+      : undefined;
+
   return (
-    <header className="border-b border-[#E2DFD6] bg-[#FFFFFF]/90 backdrop-blur-sm sticky top-0 z-30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Brand identity */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-[#14181F] text-[#FFFFFF] flex items-center justify-center shadow-xs">
-            <Wind className="w-5 h-5 text-emerald-400 stroke-[2.2]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-tight text-[#14181F]">
+    <header className="sm:sticky sm:top-0 z-40 border-b border-[#DCE3EC] bg-[#FFFFFF]">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 xl:py-0 xl:h-16 flex flex-wrap items-center justify-between gap-3">
+        {/* Left: Brand Link Back to Overview / */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href="/"
+            aria-label="Back to VayuPlan overview"
+            className="inline-flex items-center gap-2.5 group rounded-lg pr-2 py-1"
+          >
+            <span className="w-9 h-9 rounded-lg bg-[#0F172A] group-hover:bg-[#1D4ED8] text-[#FFFFFF] flex items-center justify-center transition-colors">
+              <Wind className="w-4 h-4 text-[#93C5FD]" aria-hidden="true" />
+            </span>
+            <span className="flex flex-col">
+              <span className="font-display font-bold text-lg leading-tight tracking-tight text-[#0F172A]">
                 VayuPlan
               </span>
-              <span className="text-xs font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-[#EFECE6] text-[#474D58] border border-[#DDD9CE]">
-                v1.0 • CPCB CAMS
+              <span className="inline-flex items-center gap-1 text-xs text-[#525E70] group-hover:text-[#1D4ED8] transition-colors">
+                <ArrowLeft className="w-3 h-3" aria-hidden="true" />
+                <span>Overview</span>
               </span>
-            </div>
-            <p className="text-xs text-[#5E6470] hidden sm:block">
-              Pan-India Urban Air Quality & Low-Emission Assistant
-            </p>
-          </div>
+            </span>
+          </Link>
         </div>
 
-        {/* Location Search & GPS Controls */}
-        <div className="flex items-center gap-2.5 flex-1 max-w-lg md:ml-auto">
+        {/* Center: Pan-India Search Combobox & GPS Button */}
+        <div className="flex items-center gap-2 flex-1 min-w-[230px] max-w-md">
           <div ref={searchContainerRef} className="relative flex-1">
             <div className="relative flex items-center">
-              <Search className="w-4 h-4 text-[#7A8290] absolute left-3 pointer-events-none" />
+              <Search
+                className="w-4 h-4 text-[#525E70] absolute left-3 pointer-events-none"
+                aria-hidden="true"
+              />
               <input
                 type="text"
                 role="combobox"
                 aria-expanded={isOpen}
                 aria-autocomplete="list"
                 aria-controls="location-results"
+                aria-activedescendant={activeOptionId}
                 aria-label="Search Indian city or district"
-                placeholder="Search Indian city (e.g., Delhi, Pune, Patna)..."
+                placeholder="Search Indian city (Delhi, Pune, Patna)..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-                className="w-full text-sm pl-9 pr-9 py-2 bg-[#F7F6F2] border border-[#DDD9CE] rounded-md text-[#14181F] placeholder:text-[#8C93A0] focus:bg-[#FFFFFF] focus:border-[#14181F] focus:outline-none transition-colors"
+                onFocus={() => query.trim().length >= 2 && setIsOpen(true)}
+                className="w-full text-base sm:text-sm pl-9 pr-9 py-2 min-h-[44px] bg-[#F1F4F8] border border-[#64748B]/70 rounded-lg text-[#0F172A] placeholder:text-[#525E70] focus:bg-[#FFFFFF] focus:border-[#1D4ED8] transition-colors"
               />
               {isSearching && (
-                <Loader2 className="w-4 h-4 text-[#7A8290] animate-spin absolute right-3 pointer-events-none" />
+                <Loader2
+                  className="w-4 h-4 text-[#1D4ED8] animate-spin absolute right-3 pointer-events-none"
+                  aria-hidden="true"
+                />
               )}
             </div>
 
-            {/* Suggestions Dropdown */}
-            {isOpen && suggestions.length > 0 && (
+            {isOpen && (
               <ul
                 id="location-results"
                 role="listbox"
-                className="absolute left-0 right-0 top-full mt-1.5 bg-[#FFFFFF] border border-[#DDD9CE] rounded-md shadow-lg overflow-hidden z-50 max-h-64 overflow-y-auto"
+                aria-label="Indian city search results"
+                className="absolute left-0 right-0 top-full mt-1.5 bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg elevation-3 overflow-hidden z-50 max-h-64 overflow-y-auto"
               >
-                {suggestions.map((loc, idx) => (
-                  <li
-                    key={`${loc.lat}-${loc.lon}-${idx}`}
-                    role="option"
-                    aria-selected={idx === highlightedIndex}
-                    onClick={() => {
-                      onSelectLocation(loc);
-                      setQuery("");
-                      setIsOpen(false);
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(idx)}
-                    className={`px-3.5 py-2.5 cursor-pointer text-sm flex items-center justify-between transition-colors ${
-                      idx === highlightedIndex
-                        ? "bg-[#EFECE6] text-[#14181F]"
-                        : "text-[#2B303B] hover:bg-[#F7F6F2]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#6E7582] shrink-0" />
-                      <span className="font-medium text-[#14181F]">{loc.name}</span>
-                      <span className="text-xs text-[#7A8290]">({loc.state})</span>
-                    </div>
-                    <span className="text-xs font-mono text-[#8C93A0]">
-                      {loc.lat.toFixed(2)}°, {loc.lon.toFixed(2)}°
-                    </span>
+                {suggestions.length > 0 ? (
+                  suggestions.map((loc, idx) => (
+                    <li
+                      key={`${loc.lat}-${loc.lon}-${idx}`}
+                      id={`location-option-${idx}`}
+                      role="option"
+                      aria-selected={idx === highlightedIndex}
+                      onClick={() => {
+                        onSelectLocation(loc);
+                        setQuery("");
+                        setIsOpen(false);
+                        setHighlightedIndex(-1);
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(idx)}
+                      className={`px-3.5 py-2.5 cursor-pointer text-sm flex items-center justify-between transition-colors ${
+                        idx === highlightedIndex
+                          ? "bg-[#EFF6FF] text-[#0F172A]"
+                          : "text-[#334155] hover:bg-[#F7F8FA]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapPin
+                          className="w-4 h-4 text-[#1D4ED8] shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span className="font-medium text-[#0F172A] truncate">
+                          {loc.name}
+                        </span>
+                        <span className="text-xs text-[#525E70] truncate">
+                          ({loc.state})
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono tabular-nums text-[#525E70] ml-2 shrink-0">
+                        {loc.lat.toFixed(2)}°, {loc.lon.toFixed(2)}°
+                      </span>
+                    </li>
+                  ))
+                ) : !isSearching ? (
+                  <li className="px-3.5 py-3 text-xs text-[#525E70]">
+                    No Indian cities matched &ldquo;{query.trim()}&rdquo;. Try another city or district name.
                   </li>
-                ))}
+                ) : null}
               </ul>
             )}
           </div>
 
-          {/* GPS Location Button */}
           <button
             type="button"
             onClick={handleUseMyLocation}
             disabled={isLocating || isLoading}
             aria-label="Use my current GPS location"
             title="Locate via GPS"
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 border border-[#DDD9CE] bg-[#FFFFFF] text-[#2B303B] hover:bg-[#F7F6F2] hover:border-[#14181F] active:bg-[#EFECE6] rounded-md transition-colors disabled:opacity-60 shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3.5 min-h-[44px] min-w-[44px] border border-[#64748B]/70 bg-[#FFFFFF] text-[#0F172A] hover:border-[#1D4ED8] hover:text-[#1D4ED8] rounded-lg transition-colors disabled:opacity-55 shrink-0"
           >
             {isLocating ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-[#1D4ED8]" aria-hidden="true" />
             ) : (
-              <Navigation className="w-3.5 h-3.5 text-[#059669]" />
+              <Navigation
+                className="w-4 h-4 text-[#1D4ED8]"
+                aria-hidden="true"
+              />
             )}
             <span className="hidden sm:inline">GPS</span>
           </button>
         </div>
+
+        {/* Right: Compact 4-Preset Quick-Switcher Pills */}
+        {onSelectPreset && (
+          <nav
+            aria-label="Quick city and persona presets"
+            className="w-full xl:w-auto flex items-center gap-1.5 overflow-x-auto pb-0.5 xl:pb-0 scrollbar-none"
+          >
+            {presets.map((preset) => {
+              const isActive = activePresetId === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => onSelectPreset(preset)}
+                  title={preset.description}
+                  aria-label={`${preset.title}: ${preset.description}`}
+                  aria-pressed={isActive}
+                  className={`px-3 min-h-[40px] rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                    isActive
+                      ? "bg-[#0F172A] text-[#FFFFFF] border-[#0F172A]"
+                      : "bg-[#F1F4F8] text-[#334155] border-[#DCE3EC] hover:border-[#1D4ED8] hover:text-[#0F172A]"
+                  }`}
+                >
+                  {preset.location.name}
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </div>
 
-      {/* Geolocation error notification banner */}
       {geoError && (
-        <div className="bg-rose-50 border-t border-rose-200 px-4 py-1.5 text-xs text-rose-900 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 max-w-7xl mx-auto w-full">
-            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+        <div
+          role="alert"
+          className="bg-[#FEF2F2] border-t border-[#FCA5A5] px-4 sm:px-6 lg:px-8 py-2 text-xs text-[#991B1B]"
+        >
+          <div className="max-w-[1440px] mx-auto flex items-center gap-2">
+            <AlertCircle
+              className="w-4 h-4 text-[#DC2626] shrink-0"
+              aria-hidden="true"
+            />
             <span>{geoError}</span>
             <button
+              type="button"
               onClick={() => setGeoError(null)}
-              className="ml-auto underline hover:text-rose-950 font-medium text-xs"
+              className="ml-auto px-3 py-1.5 min-h-[36px] rounded border border-[#FCA5A5] bg-[#FFFFFF] font-semibold text-[#991B1B] hover:border-[#991B1B] transition-colors shrink-0"
             >
               Dismiss
             </button>
