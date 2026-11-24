@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  Schibsted_Grotesk,
+  JetBrains_Mono,
+} from "next/font/google";
+import { MotionProvider } from "@/components/MotionProvider";
 import "./globals.css";
 
-const sans = Plus_Jakarta_Sans({
+const display = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["500", "600", "700", "800"],
+});
+
+const sans = Schibsted_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
@@ -13,13 +25,13 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "VayuPlan — Urban Air Quality Assistant for India",
+  title: "VayuPlan — Pan-India Urban Air Quality & Low-Emission Assistant",
   description:
-    "Grounded civic air quality telemetry, CPCB NAQI analytics, and low-emission commute & indoor planning for Indian cities.",
+    "Grounded civic air intelligence combining real-time CPCB NAQI telemetry, exposure physics, and resilient Gemini AI across Indian cities.",
 };
 
 export default function RootLayout({
@@ -28,9 +40,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body className="min-h-screen bg-[#F7F6F2] text-[#14181F] font-sans antialiased selection:bg-[#E5E2D9] selection:text-[#14181F]">
-        {children}
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+    >
+      <body className="min-h-screen bg-[#F7F8FA] text-[#0F172A] font-sans antialiased selection:bg-[#DBEAFE] selection:text-[#0F172A]">
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );
