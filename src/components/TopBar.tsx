@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   Search,
   MapPin,
@@ -166,7 +167,7 @@ export function TopBar({
 
   return (
     <header className="sm:sticky sm:top-0 z-40 border-b border-[#DCE3EC] bg-[#FFFFFF]">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 xl:py-0 xl:h-16 flex flex-wrap items-center justify-between gap-3">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 flex flex-wrap items-center justify-between gap-3">
         {/* Left: Brand Link Back to Overview / */}
         <div className="flex items-center gap-3 shrink-0">
           <Link
@@ -190,8 +191,8 @@ export function TopBar({
         </div>
 
         {/* Center: Pan-India Search Combobox & GPS Button */}
-        <div className="flex items-center gap-2 flex-1 min-w-[230px] max-w-md">
-          <div ref={searchContainerRef} className="relative flex-1">
+        <div className="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+          <div ref={searchContainerRef} className="relative flex-1 min-w-0">
             <div className="relative flex items-center">
               <Search
                 className="w-4 h-4 text-[#525E70] absolute left-3 pointer-events-none"
@@ -273,7 +274,8 @@ export function TopBar({
             )}
           </div>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={handleUseMyLocation}
             disabled={isLocating || isLoading}
@@ -290,14 +292,14 @@ export function TopBar({
               />
             )}
             <span className="hidden sm:inline">GPS</span>
-          </button>
+          </motion.button>
         </div>
 
         {/* Right: Compact 4-Preset Quick-Switcher Pills */}
         {onSelectPreset && (
           <nav
             aria-label="Quick city and persona presets"
-            className="w-full xl:w-auto flex items-center gap-1.5 overflow-x-auto pb-0.5 xl:pb-0 scrollbar-none"
+            className="w-full xl:w-auto flex flex-wrap sm:flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 xl:pb-0 scrollbar-none"
           >
             {presets.map((preset) => {
               const isActive = activePresetId === preset.id;
@@ -309,13 +311,21 @@ export function TopBar({
                   title={preset.description}
                   aria-label={`${preset.title}: ${preset.description}`}
                   aria-pressed={isActive}
-                  className={`px-3 min-h-[40px] rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                  className={`relative px-3 min-h-[40px] rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                     isActive
-                      ? "bg-[#0F172A] text-[#FFFFFF] border-[#0F172A]"
+                      ? "text-[#FFFFFF] border-[#0F172A]"
                       : "bg-[#F1F4F8] text-[#334155] border-[#DCE3EC] hover:border-[#1D4ED8] hover:text-[#0F172A]"
                   }`}
                 >
-                  {preset.location.name}
+                  {isActive && (
+                    <motion.span
+                      layoutId="topbar-preset-pill"
+                      transition={{ type: "spring", stiffness: 440, damping: 34 }}
+                      className="absolute inset-0 bg-[#0F172A] rounded-[7px]"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="relative z-10">{preset.location.name}</span>
                 </button>
               );
             })}

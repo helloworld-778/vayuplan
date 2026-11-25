@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   Cpu,
@@ -33,6 +34,15 @@ interface TodaysSmartBriefProps {
   onAskCopilot: (prompt: string) => void;
 }
 
+function conciseSummary(raw: string): string {
+  const sentences = raw
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .filter(Boolean);
+  if (sentences.length <= 3) return raw.trim();
+  return sentences.slice(0, 3).join(" ");
+}
+
 export function TodaysSmartBrief({
   snapshot,
   profile,
@@ -48,17 +58,17 @@ export function TodaysSmartBrief({
     return (
       <section
         aria-label="Today's Smart Brief loading"
-        className="h-full bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 animate-pulse flex flex-col justify-between gap-4"
+        className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl overflow-hidden elevation-1 animate-pulse"
       >
-        <div className="space-y-3">
+        <div className="h-1 bg-[#1D4ED8]/40" />
+        <div className="p-6 space-y-4">
           <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
           <div className="h-4 w-full bg-[#F1F4F8] rounded" />
-          <div className="h-4 w-5/6 bg-[#F1F4F8] rounded" />
-        </div>
-        <div className="space-y-2.5">
-          <div className="h-14 bg-[#F1F4F8] rounded-lg" />
-          <div className="h-14 bg-[#F1F4F8] rounded-lg" />
-          <div className="h-14 bg-[#F1F4F8] rounded-lg" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+          </div>
         </div>
       </section>
     );
@@ -69,7 +79,7 @@ export function TodaysSmartBrief({
       <section
         aria-label="Today's Smart Brief error"
         role="alert"
-        className="h-full bg-[#FFFFFF] border border-[#FCA5A5] rounded-xl p-6 elevation-1 flex flex-col justify-center gap-3 text-sm text-[#991B1B]"
+        className="bg-[#FFFFFF] border border-[#FCA5A5] rounded-xl p-6 elevation-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm text-[#991B1B]"
       >
         <div className="flex items-start gap-2.5">
           <AlertCircle className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5" aria-hidden="true" />
@@ -86,7 +96,7 @@ export function TodaysSmartBrief({
           <button
             type="button"
             onClick={onRetryPlan}
-            className="w-fit inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] hover:border-[#991B1B] text-[#991B1B] text-xs font-semibold transition-colors"
+            className="w-fit inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] hover:border-[#991B1B] text-[#991B1B] text-xs font-semibold transition-colors shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Retry Plan Synthesis</span>
@@ -100,7 +110,7 @@ export function TodaysSmartBrief({
     return (
       <section
         aria-label="Today's Smart Brief"
-        className="h-full bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 flex flex-col justify-center gap-3 text-sm text-[#525E70]"
+        className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 flex flex-wrap items-center justify-between gap-3 text-sm text-[#525E70]"
       >
         <p>Smart brief unavailable. Refresh telemetry or retry plan calculation.</p>
         {onRetryPlan && (
@@ -120,28 +130,37 @@ export function TodaysSmartBrief({
   const isAi = plan.mode === "ai";
   const { exposureWindows, commuteImpact, indoorAir } = analytics;
 
-  const bestWindowLabel = exposureWindows.bestOutdoorWindow
+  const outdoorImpactMetric = `-${exposureWindows.pm25ReductionPercent}% PM2.5`;
+  const outdoorDetail = exposureWindows.bestOutdoorWindow
     ? `${exposureWindows.bestOutdoorWindow.startHour
         .toString()
         .padStart(2, "0")}:00–${exposureWindows.bestOutdoorWindow.endHour
         .toString()
-        .padStart(2, "0")}:00 IST · ${exposureWindows.pm25ReductionPercent}% lower PM2.5`
-    : `Keep outings brief · ${exposureWindows.pm25ReductionPercent}% timing delta`;
+        .padStart(2, "0")}:00 IST window`
+    : "Minimize peak outdoor hours";
 
-  const bestTransitLabel = commuteImpact.recommendedAlternative
-    ? `Shift to ${commuteImpact.recommendedAlternative.label} (${commuteImpact.recommendedAlternative.deltaInhaledPm25Percent}% dose · ${
-        commuteImpact.recommendedAlternative.monthlyCo2SavedKg >= 0 ? "+" : ""
-      }${commuteImpact.recommendedAlternative.monthlyCo2SavedKg} kg CO₂/mo)`
+  const transitImpactMetric = commuteImpact.recommendedAlternative
+    ? `${commuteImpact.recommendedAlternative.monthlyCo2SavedKg >= 0 ? "+" : ""}${
+        commuteImpact.recommendedAlternative.monthlyCo2SavedKg
+      } kg CO₂/mo`
     : profile.currentCommuteMode === "work_from_home"
-    ? "Remote / WFH active (0 g transit CO₂)"
-    : `N95 respirator cuts commute exposure ${commuteImpact.maskUpgradeImpact.percentSaved}%`;
+    ? "0 g Transit CO₂"
+    : `-${commuteImpact.maskUpgradeImpact.percentSaved}% Dose`;
 
-  const ventilationLabel =
+  const transitDetail = commuteImpact.recommendedAlternative
+    ? `Shift to ${commuteImpact.recommendedAlternative.label} (${commuteImpact.recommendedAlternative.deltaInhaledPm25Percent}% dose)`
+    : profile.currentCommuteMode === "work_from_home"
+    ? "Remote work active today"
+    : "Upgrading to fitted N95";
+
+  const indoorImpactMetric =
     indoorAir.ventilationDirective === "OPEN_WINDOWS"
-      ? `Open windows · Est. ${indoorAir.estimatedIndoorPm25} µg/m³ indoor`
+      ? "Open Windows"
       : indoorAir.ventilationDirective === "BRIEF_VENTILATION"
-      ? `Brief 15m airing · Est. ${indoorAir.estimatedIndoorPm25} µg/m³ indoor`
-      : `Seal windows · Est. ${indoorAir.estimatedIndoorPm25} µg/m³ indoor`;
+      ? "Brief 15m Airing"
+      : "Seal Windows";
+
+  const indoorDetail = `Est. ${indoorAir.estimatedIndoorPm25} µg/m³ indoor`;
 
   const handleAskAboutBrief = () => {
     const cleanPersona = profile.persona.replaceAll("_", " ");
@@ -153,128 +172,140 @@ export function TodaysSmartBrief({
   return (
     <section
       aria-label="Today's Smart Brief"
-      className="h-full bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 p-5 sm:p-6 flex flex-col justify-between gap-4"
+      className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden"
     >
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-[#0F172A]">
-            Today&apos;s Smart Brief
-          </h2>
+      {/* Atmospheric Cobalt Top Accent Bar */}
+      <div aria-hidden="true" className="h-1 bg-[#1D4ED8]" />
 
-          {isAi ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Gemini AI</span>
-            </span>
-          ) : (
-            <span
-              data-fallback-reason={plan.fallbackReason}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F1F4F8] text-[#334155] border border-[#DCE3EC] text-xs font-semibold"
-            >
-              <Cpu className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Deterministic Physics Fallback</span>
-            </span>
-          )}
+      <div className="p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="font-display text-lg font-semibold tracking-tight text-[#0F172A]">
+              Today&apos;s Smart Brief
+            </h2>
+
+            {isAi ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold">
+                <span className="relative flex h-2 w-2" aria-hidden="true">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1D4ED8] opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1D4ED8]" />
+                </span>
+                <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Gemini AI</span>
+              </span>
+            ) : (
+              <span
+                data-fallback-reason={plan.fallbackReason}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F1F4F8] text-[#334155] border border-[#DCE3EC] text-xs font-semibold"
+              >
+                <Cpu className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Deterministic Physics Fallback</span>
+              </span>
+            )}
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={handleAskAboutBrief}
+            className="inline-flex items-center justify-center gap-2 px-3.5 min-h-[40px] rounded-lg bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold transition-colors shrink-0"
+          >
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Ask Copilot about this brief</span>
+          </motion.button>
         </div>
 
         {isPlanLoading && (
-          <p className="mt-2 text-xs font-medium text-[#1D4ED8]">
-            Updating synthesis for new household parameters...
+          <p className="text-xs font-medium text-[#1D4ED8]">
+            Updating synthesis for updated household parameters...
           </p>
         )}
 
-        <p className="mt-3 text-sm leading-relaxed text-[#334155]">
-          {plan.summary}
+        <p className="text-sm leading-relaxed text-[#334155] max-w-3xl">
+          {conciseSummary(plan.summary)}
         </p>
+
+        {/* Top 3 Prioritized Impact Cards (Responsive 3-col strip with zero clipping) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => onJumpToTab("routine")}
+            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+                <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Best Outdoor Window</span>
+              </span>
+              <ArrowUpRight
+                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                aria-hidden="true"
+              />
+            </div>
+            <div>
+              <div className="font-mono tabular-nums text-base font-bold text-[#0F172A]">
+                {outdoorImpactMetric}
+              </div>
+              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+                {outdoorDetail}
+              </div>
+            </div>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => onJumpToTab("commute")}
+            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+                <TrainFront className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Best Transit Switch</span>
+              </span>
+              <ArrowUpRight
+                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                aria-hidden="true"
+              />
+            </div>
+            <div>
+              <div className="font-mono tabular-nums text-base font-bold text-[#065F46]">
+                {transitImpactMetric}
+              </div>
+              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+                {transitDetail}
+              </div>
+            </div>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => onJumpToTab("indoor")}
+            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+                <Home className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Indoor Ventilation Directive</span>
+              </span>
+              <ArrowUpRight
+                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                aria-hidden="true"
+              />
+            </div>
+            <div>
+              <div className="font-display text-base font-bold text-[#0F172A]">
+                {indoorImpactMetric}
+              </div>
+              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+                {indoorDetail}
+              </div>
+            </div>
+          </motion.button>
+        </div>
       </div>
-
-      {/* Top 3 Prioritized Action Jump-Pills */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => onJumpToTab("routine")}
-          className="w-full text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] px-3.5 py-2.5 min-h-[44px] transition-colors flex items-center justify-between gap-3 group"
-        >
-          <div className="flex items-start gap-2.5 min-w-0">
-            <Clock
-              className="w-4 h-4 text-[#334155] group-hover:text-[#1D4ED8] shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-[#0F172A] block">
-                Best Outdoor Window
-              </span>
-              <span className="text-xs tabular-nums text-[#334155] block leading-snug">
-                {bestWindowLabel}
-              </span>
-            </div>
-          </div>
-          <ArrowUpRight
-            className="w-4 h-4 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
-            aria-hidden="true"
-          />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onJumpToTab("commute")}
-          className="w-full text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] px-3.5 py-2.5 min-h-[44px] transition-colors flex items-center justify-between gap-3 group"
-        >
-          <div className="flex items-start gap-2.5 min-w-0">
-            <TrainFront
-              className="w-4 h-4 text-[#334155] group-hover:text-[#1D4ED8] shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-[#0F172A] block">
-                Best Transit Switch
-              </span>
-              <span className="text-xs tabular-nums text-[#334155] block leading-snug">
-                {bestTransitLabel}
-              </span>
-            </div>
-          </div>
-          <ArrowUpRight
-            className="w-4 h-4 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
-            aria-hidden="true"
-          />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onJumpToTab("indoor")}
-          className="w-full text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] px-3.5 py-2.5 min-h-[44px] transition-colors flex items-center justify-between gap-3 group"
-        >
-          <div className="flex items-start gap-2.5 min-w-0">
-            <Home
-              className="w-4 h-4 text-[#334155] group-hover:text-[#1D4ED8] shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-[#0F172A] block">
-                Indoor Ventilation Directive
-              </span>
-              <span className="text-xs tabular-nums text-[#334155] block leading-snug">
-                {ventilationLabel}
-              </span>
-            </div>
-          </div>
-          <ArrowUpRight
-            className="w-4 h-4 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
-            aria-hidden="true"
-          />
-        </button>
-      </div>
-
-      {/* Quick Ask Copilot Trigger */}
-      <button
-        type="button"
-        onClick={handleAskAboutBrief}
-        className="w-full inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold transition-colors"
-      >
-        <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-        <span>Ask Copilot about this brief</span>
-      </button>
     </section>
   );
 }

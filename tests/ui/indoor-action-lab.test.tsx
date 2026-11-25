@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { IndoorActionLab } from "@/components/IndoorActionLab";
 import { AirQualitySnapshot, HouseholdProfile, AssistantPlanResponse } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
@@ -176,5 +176,13 @@ describe("IndoorActionLab Component", () => {
     expect(screen.getByText("Operate HEPA Air Purifier")).toBeInTheDocument();
     expect(screen.getByText("Eliminate Incense / Mosquito Coil")).toBeInTheDocument();
     expect(screen.getByText("45 µg/m³")).toBeInTheDocument();
+
+    // Progressive disclosure: mechanism notes start collapsed and expand on click
+    expect(screen.queryByText(/Active HEPA filtration captures fine particulate mass/i)).not.toBeInTheDocument();
+    const toggles = screen.getAllByRole("button", { name: /why this works/i });
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggles[0]);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/Active HEPA filtration captures fine particulate mass/i)).toBeInTheDocument();
   });
 });

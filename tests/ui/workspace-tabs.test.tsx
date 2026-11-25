@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { WorkspaceTabs } from "@/components/WorkspaceTabs";
 import { AirQualitySnapshot, HouseholdProfile, AssistantPlanResponse } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
@@ -128,7 +128,7 @@ describe("WorkspaceTabs Component", () => {
     expect(panel).toHaveAttribute("id", "tabpanel-routine");
   });
 
-  it("switches tab on click", () => {
+  it("switches tab on click", async () => {
     render(
       <WorkspaceTabs
         snapshot={mockSnapshot}
@@ -143,7 +143,9 @@ describe("WorkspaceTabs Component", () => {
     fireEvent.click(commuteTab);
 
     expect(commuteTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
+    await waitFor(() => {
+      expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
+    });
   });
 
   it("supports keyboard navigation across all 3 analytical tabs: ArrowRight, ArrowLeft, Home, End", () => {

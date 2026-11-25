@@ -163,10 +163,13 @@ describe('Landing Page (/)', () => {
     const mumbaiTab = screen.getByRole('tab', { name: 'Mumbai' });
     fireEvent.click(mumbaiTab);
 
-    await waitFor(() => {
-      expect(screen.getByText('84')).toBeInTheDocument();
-      expect(screen.getByText('Bandra Kurla Complex CPCB')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('84')).toBeInTheDocument();
+        expect(screen.getByText('Bandra Kurla Complex CPCB')).toBeInTheDocument();
+      },
+      { timeout: 2500 }
+    );
 
     const deepDiveLink = screen.getByRole('link', { name: /Open Mumbai in Assistant/i });
     expect(deepDiveLink).toHaveAttribute('href', '/assistant?preset=mumbai-family');

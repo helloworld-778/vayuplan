@@ -270,7 +270,9 @@ describe("/assistant AI-First Split Cockpit", () => {
 
     // Jump-pill inside Smart Brief switches analytical workspace tab cleanly
     fireEvent.click(within(briefSection).getByRole("button", { name: /Best Transit Switch/i }));
-    expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
+    await waitFor(() => {
+      expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
+    });
 
     // Persistent AI Copilot rail is immediately mounted without clicking any tab
     const copilotRail = screen.getByRole("complementary", { name: /ask vayuplan ai copilot/i });

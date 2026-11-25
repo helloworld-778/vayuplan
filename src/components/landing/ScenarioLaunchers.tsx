@@ -35,7 +35,7 @@ export function ScenarioLaunchers() {
     <section
       id="scenarios"
       aria-labelledby="scenarios-heading"
-      className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-14 sm:py-16 border-t border-[#DCE3EC]"
+      className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-12 sm:py-14 border-t border-[#DCE3EC]"
     >
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="max-w-2xl">
@@ -45,9 +45,8 @@ export function ScenarioLaunchers() {
           >
             Preconfigured urban household profiles
           </h2>
-          <p className="mt-3 text-base leading-relaxed text-[#334155]">
-            Open the assistant with a real Indian commuter or household setup. Live station
-            readings, commute exposure deltas, and AI recommendations hydrate dynamically on load.
+          <p className="mt-2.5 text-sm sm:text-base leading-relaxed text-[#334155]">
+            Launch an Indian household setup directly into the workspace with live station telemetry hydrated on load.
           </p>
         </div>
 
@@ -61,17 +60,17 @@ export function ScenarioLaunchers() {
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.15 }}
-        transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-        className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4"
+        transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-4"
       >
         {presets.map((preset) => (
           <Link
             key={preset.id}
             href={`/assistant?preset=${encodeURIComponent(preset.id)}`}
-            className="group rounded-xl border border-[#DCE3EC] bg-[#FFFFFF] p-6 elevation-1 hover:border-[#1D4ED8]/50 hover:elevation-2 transition-all flex flex-col justify-between"
+            className="group rounded-xl border border-[#DCE3EC] bg-[#FFFFFF] p-5 sm:p-6 elevation-1 hover:border-[#1D4ED8]/50 hover:-translate-y-0.5 active:scale-[0.99] hover:elevation-2 transition-all flex flex-col justify-between gap-4"
           >
             <div>
               <div className="flex items-start justify-between gap-3">
@@ -95,10 +94,12 @@ export function ScenarioLaunchers() {
                 )}
               </div>
 
-              <p className="mt-3 text-sm leading-relaxed text-[#334155]">{preset.description}</p>
+              <p className="mt-2.5 text-sm leading-relaxed text-[#334155]">
+                {preset.description}
+              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#DCE3EC] flex flex-wrap items-center justify-between gap-3">
+            <div className="pt-4 border-t border-[#DCE3EC] flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2 text-xs text-[#334155]">
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-[#F1F4F8] px-2.5 py-1 font-medium">
                   <Route className="w-3.5 h-3.5 text-[#525E70]" aria-hidden="true" />

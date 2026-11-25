@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AirQualitySnapshot,
   AssistantPlanResponse,
@@ -175,18 +175,17 @@ export function WorkspaceTabs({
             )}
           </div>
         ) : plan && analytics ? (
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
               role="tabpanel"
-              id="tabpanel-routine"
-              aria-labelledby="tab-routine"
+              id={`tabpanel-${activeTab}`}
+              aria-labelledby={`tab-${activeTab}`}
               tabIndex={0}
-              hidden={activeTab !== "routine"}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
             >
               {activeTab === "routine" && (
                 <RoutinePlanner
@@ -195,15 +194,7 @@ export function WorkspaceTabs({
                   analytics={analytics}
                 />
               )}
-            </div>
 
-            <div
-              role="tabpanel"
-              id="tabpanel-commute"
-              aria-labelledby="tab-commute"
-              tabIndex={0}
-              hidden={activeTab !== "commute"}
-            >
               {activeTab === "commute" && (
                 <CommuteOptimizer
                   snapshot={snapshot}
@@ -212,15 +203,7 @@ export function WorkspaceTabs({
                   analytics={analytics}
                 />
               )}
-            </div>
 
-            <div
-              role="tabpanel"
-              id="tabpanel-indoor"
-              aria-labelledby="tab-indoor"
-              tabIndex={0}
-              hidden={activeTab !== "indoor"}
-            >
               {activeTab === "indoor" && (
                 <IndoorActionLab
                   snapshot={snapshot}
@@ -229,8 +212,8 @@ export function WorkspaceTabs({
                   analytics={analytics}
                 />
               )}
-            </div>
-          </motion.div>
+            </motion.div>
+          </AnimatePresence>
         ) : (
           <div className="p-8 text-center bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 space-y-3">
             <p className="text-xs text-[#525E70]">

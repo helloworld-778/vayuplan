@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { HourlyAirPoint, NaqiCategory } from "@/types/air-quality";
 import {
   RollingWindow,
@@ -23,6 +24,12 @@ interface PlotPoint {
   category: NaqiCategory;
   hour: number;
   timeIso: string;
+}
+
+interface WindowBandSpan {
+  x: number;
+  width: number;
+  badgeCenterX: number;
 }
 
 function buildMonotoneSplinePath(coords: Array<{ x: number; y: number }>): string {
@@ -85,6 +92,46 @@ function getPostureTextClass(naqi: number): string {
   return "text-[#991B1B]";
 }
 
+/**
+ * Matches a rolling 2h window onto plotted coordinates reliably, including when 48h
+ * global forecast selection falls beyond the 36h chart slice or differs in ISO string formatting.
+ */
+function findMatchingStartIndex(
+  win: RollingWindow | null,
+  coords: PlotPoint[]
+): number {
+  if (!win || coords.length === 0) return -1;
+
+  // 1. Exact ISO timestamp match
+  const exactIdx = coords.findIndex((p) => p.timeIso === win.startTimeIso);
+  if (exactIdx !== -1) return exactIdx;
+
+  // 2. Parsed epoch timestamp match
+  const targetMs = Date.parse(win.startTimeIso);
+  if (Number.isFinite(targetMs)) {
+    const epochIdx = coords.findIndex((p) => Date.parse(p.timeIso) === targetMs);
+    if (epochIdx !== -1) return epochIdx;
+  }
+
+  // 3. Fallback: match plotted wall-clock startHour (picking candidate closest to window's avgPm25)
+  let fallbackIdx = -1;
+  let smallestDelta = Infinity;
+  for (let i = 0; i < coords.length - 1; i++) {
+    if (coords[i].hour === win.startHour) {
+      const avgLocal = (coords[i].pm25 + coords[i + 1].pm25) / 2;
+      const delta = Math.abs(avgLocal - win.avgPm25);
+      if (delta < smallestDelta) {
+        smallestDelta = delta;
+        fallbackIdx = i;
+      }
+    }
+  }
+  if (fallbackIdx !== -1) return fallbackIdx;
+
+  // 4. Final fallback: single-hour match if on final plotted slot
+  return coords.findIndex((p) => p.hour === win.startHour);
+}
+
 export function HourlyExposureChart({
   hourlyForecast,
   bestWindow,
@@ -99,10 +146,10 @@ export function HourlyExposureChart({
   );
 
   const width = 800;
-  const height = 260;
+  const height = 270;
   const paddingLeft = 48;
   const paddingRight = 20;
-  const paddingTop = 34;
+  const paddingTop = 44;
   const paddingBottom = 38;
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
@@ -118,12 +165,13 @@ export function HourlyExposureChart({
       };
     }
 
-    const safeMax = Math.max(
+    const maxCityPm25 = Math.max(
       ...points.map((p) =>
         typeof p.pm25 === "number" && Number.isFinite(p.pm25) ? Math.max(0, p.pm25) : 0
       ),
-      120
+      0
     );
+    const safeMax = Math.max(maxCityPm25 * 1.2, 20);
 
     const mapped: PlotPoint[] = points.map((p, idx) => {
       const x =
@@ -196,23 +244,38 @@ export function HourlyExposureChart({
     );
   }
 
-  const getWindowSpan = (win: RollingWindow | null) => {
-    if (!win || coords.length === 0) return null;
-    const startIndex = coords.findIndex((p) => p.timeIso === win.startTimeIso);
+  const getWindowSpan = (
+    win: RollingWindow | null,
+    pillHalfWidth: number
+  ): WindowBandSpan | null => {
+    const startIndex = findMatchingStartIndex(win, coords);
     if (startIndex === -1 || !coords[startIndex]) return null;
     const endIndex = Math.min(startIndex + 1, coords.length - 1);
-    const rawLeft = coords[startIndex].x - 10;
-    const rawRight = coords[endIndex].x + 10;
-    const spanX = Math.max(paddingLeft, rawLeft);
-    const spanW = Math.min(width - paddingRight - spanX, Math.max(58, rawRight - spanX));
+    const leftPt = coords[startIndex].x;
+    const rightPt =
+      endIndex > startIndex ? coords[endIndex].x : leftPt + 24;
+    const spanX = Math.max(paddingLeft, leftPt - 8);
+    const spanW = Math.min(
+      width - paddingRight - spanX,
+      Math.max(26, rightPt - leftPt + 16)
+    );
     if (!Number.isFinite(spanX) || !Number.isFinite(spanW) || spanW <= 0) {
       return null;
     }
-    return { x: spanX, width: spanW };
+    const rawCenter = spanX + spanW / 2;
+    const clampedCenter = Math.max(
+      paddingLeft + pillHalfWidth,
+      Math.min(width - paddingRight - pillHalfWidth, rawCenter)
+    );
+    return { x: spanX, width: spanW, badgeCenterX: clampedCenter };
   };
 
-  const bestSpan = getWindowSpan(bestWindow);
-  const worstSpan = getWindowSpan(worstWindow);
+  const bestSpan = getWindowSpan(bestWindow, 31);
+  const worstSpan = getWindowSpan(worstWindow, 38);
+  const badgesOverlap =
+    bestSpan !== null &&
+    worstSpan !== null &&
+    Math.abs(bestSpan.badgeCenterX - worstSpan.badgeCenterX) < 76;
 
   const srSummary = `24-hour diurnal air quality forecast. Peak PM2.5 of ${maxPm25.toFixed(
     1
@@ -224,7 +287,6 @@ export function HourlyExposureChart({
     worstWindow?.endHour ?? "N/A"
   }:00 with average PM2.5 of ${worstWindow?.avgPm25 ?? "N/A"} µg/m³.`;
 
-  // Continuous pointer coordinate scrubbing across SVG (supports both mouse and touch sliding)
   const scrubFromClientX = (clientX: number) => {
     const svg = svgRef.current;
     if (!svg || coords.length === 0) return;
@@ -276,13 +338,15 @@ export function HourlyExposureChart({
   const alignRight = activeLeftPct > 56;
   const clampedAnchorPct = Math.min(94, Math.max(6, activeLeftPct));
 
+  const worstBadgeTopY = badgesOverlap ? paddingTop - 40 : paddingTop - 22;
+  const bestBadgeTopY = paddingTop - 22;
+
   return (
     <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-5 sm:p-6 elevation-1">
       <div className="sr-only" aria-live="polite">
         {srSummary}
       </div>
 
-      {/* Persistent live region so initial keyboard ArrowRight announcement never misses */}
       <div className="sr-only" role="status" aria-live="polite">
         {activeCoord
           ? `${activeCoord.hour.toString().padStart(2, "0")}:00 IST, PM2.5 ${activeCoord.pm25.toFixed(1)} µg/m³, NAQI ${activeCoord.naqi}, ${activeCoord.category}, ${getSafetyPostureLabel(activeCoord.naqi)}.`
@@ -369,13 +433,13 @@ export function HourlyExposureChart({
 
           {/* Peak Smog Window Shaded Band */}
           {worstSpan && (
-            <g>
+            <g data-testid="chart-peak-smog-band">
               <rect
                 x={worstSpan.x}
                 y={paddingTop}
                 width={worstSpan.width}
                 height={chartHeight}
-                fill="rgba(220, 38, 38, 0.09)"
+                fill="rgba(220, 38, 38, 0.10)"
               />
               <line
                 x1={worstSpan.x}
@@ -387,8 +451,8 @@ export function HourlyExposureChart({
                 strokeDasharray="4 3"
               />
               <rect
-                x={worstSpan.x + worstSpan.width / 2 - 38}
-                y={paddingTop - 22}
+                x={worstSpan.badgeCenterX - 38}
+                y={worstBadgeTopY}
                 width={76}
                 height={18}
                 rx={3}
@@ -396,8 +460,8 @@ export function HourlyExposureChart({
                 stroke="#FCA5A5"
               />
               <text
-                x={worstSpan.x + worstSpan.width / 2}
-                y={paddingTop - 10}
+                x={worstSpan.badgeCenterX}
+                y={worstBadgeTopY + 12}
                 textAnchor="middle"
                 fontSize={10}
                 className="fill-[#991B1B] font-mono font-bold tracking-wider"
@@ -409,13 +473,13 @@ export function HourlyExposureChart({
 
           {/* Best 2h Window Shaded Band */}
           {bestSpan && (
-            <g>
+            <g data-testid="chart-best-2h-band">
               <rect
                 x={bestSpan.x}
                 y={paddingTop}
                 width={bestSpan.width}
                 height={chartHeight}
-                fill="rgba(5, 150, 105, 0.10)"
+                fill="rgba(5, 150, 105, 0.12)"
               />
               <line
                 x1={bestSpan.x}
@@ -427,8 +491,8 @@ export function HourlyExposureChart({
                 strokeDasharray="4 3"
               />
               <rect
-                x={bestSpan.x + bestSpan.width / 2 - 31}
-                y={paddingTop - 22}
+                x={bestSpan.badgeCenterX - 31}
+                y={bestBadgeTopY}
                 width={62}
                 height={18}
                 rx={3}
@@ -436,8 +500,8 @@ export function HourlyExposureChart({
                 stroke="#6EE7B7"
               />
               <text
-                x={bestSpan.x + bestSpan.width / 2}
-                y={paddingTop - 10}
+                x={bestSpan.badgeCenterX}
+                y={bestBadgeTopY + 12}
                 textAnchor="middle"
                 fontSize={10}
                 className="fill-[#065F46] font-mono font-bold tracking-wider"
@@ -549,64 +613,73 @@ export function HourlyExposureChart({
           })}
         </svg>
 
-        {/* Responsive Tooltip Card: Inline full-width below SVG on <640px mobile, floating clamped on sm+ */}
-        {activeCoord && activeTheme && ActiveIcon && (
-          <div
-            data-testid="chart-floating-tooltip"
-            style={{
-              left: `${clampedAnchorPct}%`,
-              top: "12px",
-              transform: alignRight
-                ? "translateX(calc(-100% - 10px))"
-                : "translateX(10px)",
-            }}
-            className="chart-tooltip-responsive pointer-events-none mt-2 w-full sm:mt-0 sm:w-56 sm:absolute sm:z-20 rounded-lg border border-[#CBD5E1] bg-[#FFFFFF] p-3 elevation-3 text-xs"
-          >
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#DCE3EC]">
-              <span className="font-mono tabular-nums font-semibold text-[#0F172A]">
-                {activeCoord.hour.toString().padStart(2, "0")}:00 IST
-              </span>
-              <span className={`font-semibold ${getPostureTextClass(activeCoord.naqi)}`}>
-                {getSafetyPostureLabel(activeCoord.naqi)}
-              </span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
-                <span className="text-xs text-[#525E70] block">PM2.5</span>
-                <span className="font-mono tabular-nums font-bold text-[#0F172A]">
-                  {activeCoord.pm25.toFixed(1)} µg/m³
-                </span>
-              </div>
-              <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
-                <span className="text-xs text-[#525E70] block">PM10</span>
-                <span className="font-mono tabular-nums font-bold text-[#0F172A]">
-                  {activeCoord.pm10 !== null
-                    ? `${activeCoord.pm10.toFixed(1)} µg/m³`
-                    : "—"}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-semibold ${activeTheme.badgeBg}`}
+        {/* Responsive Tooltip Card: Inline full-width below SVG on <640px, floating clamped on sm+ */}
+        <AnimatePresence>
+          {activeCoord && activeTheme && ActiveIcon && (
+            <div
+              data-testid="chart-floating-tooltip"
+              style={{
+                left: `${clampedAnchorPct}%`,
+                top: "12px",
+                transform: alignRight
+                  ? "translateX(calc(-100% - 10px))"
+                  : "translateX(10px)",
+              }}
+              className="chart-tooltip-responsive pointer-events-none mt-2 w-full sm:mt-0 sm:w-56 sm:absolute sm:z-20"
+            >
+              <motion.div
+                key="chart-tooltip-card"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.12 }}
+                className="rounded-lg border border-[#CBD5E1] bg-[#FFFFFF] p-3 elevation-3 text-xs"
               >
-                <ActiveIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
-                <span>{activeCoord.category}</span>
-              </span>
-              <span className="font-mono tabular-nums font-bold text-[#0F172A]">
-                NAQI {activeCoord.naqi}
-              </span>
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#DCE3EC]">
+                  <span className="font-mono tabular-nums font-semibold text-[#0F172A]">
+                    {activeCoord.hour.toString().padStart(2, "0")}:00 IST
+                  </span>
+                  <span className={`font-semibold ${getPostureTextClass(activeCoord.naqi)}`}>
+                    {getSafetyPostureLabel(activeCoord.naqi)}
+                  </span>
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
+                    <span className="text-xs text-[#525E70] block">PM2.5</span>
+                    <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                      {activeCoord.pm25.toFixed(1)} µg/m³
+                    </span>
+                  </div>
+                  <div className="rounded bg-[#F1F4F8] px-2 py-1.5">
+                    <span className="text-xs text-[#525E70] block">PM10</span>
+                    <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                      {activeCoord.pm10 !== null
+                        ? `${activeCoord.pm10.toFixed(1)} µg/m³`
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-semibold ${activeTheme.badgeBg}`}
+                  >
+                    <ActiveIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
+                    <span>{activeCoord.category}</span>
+                  </span>
+                  <span className="font-mono tabular-nums font-bold text-[#0F172A]">
+                    NAQI {activeCoord.naqi}
+                  </span>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="mt-3 pt-3 border-t border-[#DCE3EC] flex flex-wrap items-center justify-between gap-2 text-xs text-[#525E70]">
-        <span>
-          X: Local IST · Y: PM2.5 (µg/m³)
-        </span>
+        <span>X: Local IST · Y: PM2.5 (µg/m³)</span>
         <span>
           Hover, slide, or focus chart + Left/Right arrows to scrub hours
         </span>

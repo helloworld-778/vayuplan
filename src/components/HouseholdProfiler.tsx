@@ -126,12 +126,12 @@ export function HouseholdProfiler({
   return (
     <section
       aria-label="Household context and exposure controls"
-      className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden"
+      className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1"
     >
-      {/* Compact Household Context Bar */}
-      <div className="px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#FFFFFF]">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0F172A] mr-1">
+      {/* Compact Household Context Bar — wrap-safe at every viewport without clipping */}
+      <div className="px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0F172A] mr-1 shrink-0">
             <SlidersHorizontal
               className="w-3.5 h-3.5 text-[#334155]"
               aria-hidden="true"
@@ -181,19 +181,21 @@ export function HouseholdProfiler({
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {hasChanges && (
             <>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={handleReset}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-[#334155] hover:text-[#0F172A] px-3 min-h-[40px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Reset</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={handleApply}
                 disabled={isPlanLoading}
@@ -201,11 +203,12 @@ export function HouseholdProfiler({
               >
                 <Check className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Apply Changes</span>
-              </button>
+              </motion.button>
             </>
           )}
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="button"
             aria-expanded={isExpanded}
             aria-controls="household-context-drawer"
@@ -219,7 +222,7 @@ export function HouseholdProfiler({
               }`}
               aria-hidden="true"
             />
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -228,11 +231,11 @@ export function HouseholdProfiler({
         {isExpanded && (
           <motion.div
             id="household-context-drawer"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="border-t border-[#DCE3EC] bg-[#F7F8FA]"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-[#DCE3EC] bg-[#F7F8FA] rounded-b-xl"
           >
             <div className="p-5 sm:p-6 space-y-6">
               {/* Persona Selection */}
@@ -503,17 +506,19 @@ export function HouseholdProfiler({
               {/* Drawer Bottom Apply / Reset Controls */}
               <div className="pt-4 border-t border-[#DCE3EC] flex flex-wrap items-center justify-end gap-2">
                 {hasChanges && (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={handleReset}
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-[#334155] hover:text-[#0F172A] px-3.5 min-h-[44px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Reset</span>
-                  </button>
+                  </motion.button>
                 )}
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={handleApply}
                   disabled={isPlanLoading}
@@ -521,7 +526,7 @@ export function HouseholdProfiler({
                 >
                   <Check className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Apply Changes</span>
-                </button>
+                </motion.button>
               </div>
             </div>
           </motion.div>

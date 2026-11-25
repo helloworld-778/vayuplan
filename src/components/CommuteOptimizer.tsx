@@ -9,6 +9,7 @@ import {
 } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
 import { getCommuteModeLabel } from "@/lib/calculators/commute-impact";
+import { MechanismDisclosure } from "./MechanismDisclosure";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 interface CommuteOptimizerProps {
@@ -36,7 +37,7 @@ export function CommuteOptimizer({
 
   return (
     <div className="space-y-6">
-      {/* Unified Two-Column Insights Sheet (Zero Eyebrows, Flattened Tonal Wells) */}
+      {/* Unified Two-Column Insights Sheet */}
       <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC] overflow-hidden">
         {commuteImpact.recommendedAlternative ? (
           <div className="p-5 flex flex-col justify-between gap-4">
@@ -45,8 +46,7 @@ export function CommuteOptimizer({
                 Switch to {commuteImpact.recommendedAlternative.label}
               </h3>
               <p className="text-xs text-[#525E70] mt-0.5">
-                Recommended transit transition vs.{" "}
-                {getCommuteModeLabel(profile.currentCommuteMode)}
+                vs. {getCommuteModeLabel(profile.currentCommuteMode)}
               </p>
 
               <p className="mt-2.5 text-xs text-[#334155] leading-relaxed">
@@ -84,7 +84,7 @@ export function CommuteOptimizer({
               </h3>
             </div>
             <p className="text-xs text-[#334155] leading-relaxed">
-              You are currently using remote work or zero-emission travel. No motorized switch required.
+              Remote work or zero-emission travel is active. No motorized switch required.
             </p>
           </div>
         )}
@@ -95,7 +95,7 @@ export function CommuteOptimizer({
               N95 Respirator Upgrade Impact
             </h3>
             <p className="text-xs text-[#525E70] mt-0.5">
-              Personal respiratory filtration protection on street corridors
+              Personal respiratory shield across roadside corridors
             </p>
 
             <p className="mt-2.5 text-xs text-[#334155] leading-relaxed">
@@ -251,7 +251,7 @@ export function CommuteOptimizer({
         </div>
       </div>
 
-      {/* Sustainable Alternatives Ledger */}
+      {/* Sustainable Alternatives Ledger with Expandable Mechanism */}
       {plan.sustainableAlternatives.length > 0 && (
         <section className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[#DCE3EC] bg-[#F7F8FA]">
@@ -261,18 +261,31 @@ export function CommuteOptimizer({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC]">
             {plan.sustainableAlternatives.map((alt, idx) => (
-              <div key={idx} className="p-4 sm:p-5 text-xs flex flex-col justify-between gap-3">
+              <div
+                key={idx}
+                className="p-4 sm:p-5 text-xs flex flex-col justify-between gap-3"
+              >
                 <div>
-                  <h4 className="font-semibold text-[#0F172A] text-sm mb-1.5">
-                    {alt.title}
-                  </h4>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <h4 className="font-semibold text-[#0F172A] text-sm">
+                      {alt.title}
+                    </h4>
+                    <span className="text-xs font-mono tabular-nums text-[#525E70]">
+                      {alt.timeframe}
+                    </span>
+                  </div>
                   <p className="text-[#334155] leading-relaxed">{alt.action}</p>
                 </div>
-                <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
-                  <span className="font-semibold">Direct Impact: </span>
-                  <span className="text-[#065F46] font-medium">
-                    {alt.directImpact}
-                  </span>
+
+                <div className="space-y-2">
+                  <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
+                    <span className="font-semibold">Direct Impact: </span>
+                    <span className="text-[#065F46] font-medium">
+                      {alt.directImpact}
+                    </span>
+                  </div>
+
+                  <MechanismDisclosure explanation={alt.whyMechanism} />
                 </div>
               </div>
             ))}

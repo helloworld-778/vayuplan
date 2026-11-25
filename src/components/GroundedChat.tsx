@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AirQualitySnapshot,
   FallbackReason,
@@ -9,7 +10,6 @@ import {
 import {
   MessageSquare,
   Send,
-  Loader2,
   Sparkles,
   Cpu,
   Tag,
@@ -36,6 +36,33 @@ interface GroundedChatProps {
   prefillRequest?: { text: string; seq: number } | null;
   onCloseDrawer?: () => void;
   className?: string;
+}
+
+function TypingDotsIndicator() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-2.5 text-xs text-[#334155] bg-[#F1F4F8] px-3.5 py-2.5 rounded-lg w-fit border border-[#DCE3EC]"
+    >
+      <span className="inline-flex items-center gap-1" aria-hidden="true">
+        {[0, 1, 2].map((idx) => (
+          <motion.span
+            key={idx}
+            animate={{ y: [0, -3, 0], opacity: [0.45, 1, 0.45] }}
+            transition={{
+              duration: 0.9,
+              repeat: Infinity,
+              delay: idx * 0.16,
+              ease: "easeInOut",
+            }}
+            className="w-1.5 h-1.5 rounded-full bg-[#1D4ED8]"
+          />
+        ))}
+      </span>
+      <span>Consulting grounded atmospheric telemetry...</span>
+    </motion.div>
+  );
 }
 
 export function GroundedChat({
@@ -246,7 +273,8 @@ export function GroundedChat({
               </p>
               <div className="grid grid-cols-1 gap-2">
                 {starterQuestions.map((q, idx) => (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.99 }}
                     key={idx}
                     type="button"
                     disabled={isLoading}
@@ -254,90 +282,87 @@ export function GroundedChat({
                     className="p-3 min-h-[44px] text-xs text-[#0F172A] bg-[#F1F4F8] border border-[#DCE3EC] hover:border-[#1D4ED8] hover:bg-[#EFF6FF] rounded-lg transition-colors text-left leading-relaxed"
                   >
                     &ldquo;{q}&rdquo;
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
           </div>
         ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex flex-col ${
-                m.sender === "user" ? "items-end" : "items-start"
-              }`}
-            >
-              <div
-                className={`max-w-[92%] rounded-lg p-3.5 text-sm leading-relaxed break-words ${
-                  m.sender === "user"
-                    ? "bg-[#0F172A] text-[#FFFFFF]"
-                    : "bg-[#F1F4F8] border border-[#DCE3EC] text-[#0F172A]"
+          <AnimatePresence initial={false}>
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`flex flex-col ${
+                  m.sender === "user" ? "items-end" : "items-start"
                 }`}
               >
-                {m.sender === "assistant" && (
-                  <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#DCE3EC]">
-                    {m.mode === "ai" ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1D4ED8]">
-                        <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Gemini AI</span>
-                      </span>
-                    ) : (
-                      <span
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#334155]"
-                        title={
-                          m.fallbackReason
-                            ? `Computed via Stage 2 physics (${m.fallbackReason})`
-                            : "Computed via Stage 2 microenvironment physics"
-                        }
-                        data-fallback-reason={m.fallbackReason}
-                      >
-                        <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Deterministic Physics Fallback</span>
-                      </span>
-                    )}
-
-                    <span className="text-xs font-mono tabular-nums text-[#525E70] ml-auto">
-                      {m.timestamp}
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-1.5 whitespace-pre-line text-sm leading-relaxed break-words">
-                  {m.text}
-                </div>
-
-                {m.citedMetrics && m.citedMetrics.length > 0 && (
-                  <div className="mt-3 pt-2.5 border-t border-[#DCE3EC] space-y-1.5">
-                    <span className="text-xs font-semibold text-[#525E70] flex items-center gap-1">
-                      <Tag className="w-3 h-3" aria-hidden="true" />
-                      <span>Cited Live Metrics</span>
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {m.citedMetrics.map((metric, i) => (
-                        <span
-                          key={i}
-                          className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[#FFFFFF] text-[#0F172A] border border-[#DCE3EC]"
-                        >
-                          {metric}
+                <div
+                  className={`max-w-[92%] rounded-lg p-3.5 text-sm leading-relaxed break-words ${
+                    m.sender === "user"
+                      ? "bg-[#0F172A] text-[#FFFFFF]"
+                      : "bg-[#F1F4F8] border border-[#DCE3EC] text-[#0F172A]"
+                  }`}
+                >
+                  {m.sender === "assistant" && (
+                    <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#DCE3EC]">
+                      {m.mode === "ai" ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1D4ED8]">
+                          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>Gemini AI</span>
                         </span>
-                      ))}
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#334155]"
+                          title={
+                            m.fallbackReason
+                              ? `Computed via Stage 2 physics (${m.fallbackReason})`
+                              : "Computed via Stage 2 microenvironment physics"
+                          }
+                          data-fallback-reason={m.fallbackReason}
+                        >
+                          <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>Deterministic Physics Fallback</span>
+                        </span>
+                      )}
+
+                      <span className="text-xs font-mono tabular-nums text-[#525E70] ml-auto">
+                        {m.timestamp}
+                      </span>
                     </div>
+                  )}
+
+                  <div className="space-y-1.5 whitespace-pre-line text-sm leading-relaxed break-words">
+                    {m.text}
                   </div>
-                )}
-              </div>
-            </div>
-          ))
+
+                  {m.citedMetrics && m.citedMetrics.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-[#DCE3EC] space-y-1.5">
+                      <span className="text-xs font-semibold text-[#525E70] flex items-center gap-1">
+                        <Tag className="w-3 h-3" aria-hidden="true" />
+                        <span>Cited Live Metrics</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {m.citedMetrics.map((metric, i) => (
+                          <span
+                            key={i}
+                            className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[#FFFFFF] text-[#0F172A] border border-[#DCE3EC]"
+                          >
+                            {metric}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
 
-        {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-[#334155] bg-[#F1F4F8] p-3 rounded-lg w-fit border border-[#DCE3EC]">
-            <Loader2
-              className="w-3.5 h-3.5 animate-spin text-[#1D4ED8]"
-              aria-hidden="true"
-            />
-            <span>Consulting grounded atmospheric telemetry...</span>
-          </div>
-        )}
+        {isLoading && <TypingDotsIndicator />}
 
         {error && (
           <div
@@ -383,7 +408,8 @@ export function GroundedChat({
             disabled={isLoading}
             className="flex-1 min-w-0 text-base sm:text-sm px-3.5 min-h-[44px] bg-[#FFFFFF] border border-[#64748B]/70 rounded-lg text-[#0F172A] placeholder:text-[#525E70] focus:border-[#1D4ED8] transition-colors"
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={isLoading || !question.trim()}
             aria-label="Send question"
@@ -391,7 +417,7 @@ export function GroundedChat({
           >
             <Send className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Ask</span>
-          </button>
+          </motion.button>
         </div>
 
         <div className="flex justify-between items-center text-xs text-[#525E70] mt-1.5 px-1">

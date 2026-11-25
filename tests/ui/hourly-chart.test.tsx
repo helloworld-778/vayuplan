@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { HourlyExposureChart } from "@/components/HourlyExposureChart";
 import { HourlyAirPoint } from "@/types/air-quality";
 import { RollingWindow } from "@/lib/calculators/exposure-windows";
@@ -61,6 +61,45 @@ describe("HourlyExposureChart Component", () => {
     expect(svgHtml).not.toContain("NaN");
   });
 
+  it("renders both BEST 2H and PEAK SMOG bands even when 48h bestWindow timestamp lies beyond the 36h slice", () => {
+    const forecast48h = Array.from({ length: 48 }, (_, i) => {
+      const day = 20 + Math.floor(i / 24);
+      const hour = (i % 24).toString().padStart(2, "0");
+      return {
+        timeIso: `2026-11-${day}T${hour}:00:00+05:30`,
+        pm25: i % 24 >= 14 && i % 24 <= 15 ? 38 : 165,
+        pm10: 210,
+        estimatedNaqi: i % 24 >= 14 && i % 24 <= 15 ? 64 : 335,
+        category: (i % 24 >= 14 && i % 24 <= 15 ? "Satisfactory" : "Very Poor") as HourlyAirPoint["category"],
+      };
+    });
+
+    const day2BestWindow: RollingWindow = {
+      startTimeIso: "2026-11-21T14:00:00+05:30", // index 38 (> 36 slice limit!)
+      endTimeIso: "2026-11-21T16:00:00+05:30",
+      startHour: 14,
+      endHour: 16,
+      avgPm25: 38,
+      avgNaqi: 64,
+      category: "Satisfactory",
+    };
+
+    render(
+      <HourlyExposureChart
+        hourlyForecast={forecast48h}
+        bestWindow={day2BestWindow}
+        worstWindow={mockWorstWindow}
+      />
+    );
+
+    const bestBand = screen.getByTestId("chart-best-2h-band");
+    const peakBand = screen.getByTestId("chart-peak-smog-band");
+    expect(bestBand).toBeInTheDocument();
+    expect(peakBand).toBeInTheDocument();
+    expect(bestBand).toHaveTextContent("BEST 2H");
+    expect(peakBand).toHaveTextContent("PEAK SMOG");
+  });
+
   it("reveals floating HTML inspection tooltip with IST hour, PM2.5, PM10, NAQI badge, and edge flipping on pointer interaction", () => {
     const forecast = createMockForecast(24, (i) => 40 + i * 5);
     render(
@@ -95,7 +134,7 @@ describe("HourlyExposureChart Component", () => {
     expect(flippedTooltip.style.transform).toContain("-100%");
   });
 
-  it("supports keyboard scrubbing with ArrowRight, ArrowLeft, End, Home, and Escape", () => {
+  it("supports keyboard scrubbing with ArrowRight, ArrowLeft, End, Home, and Escape", async () => {
     const forecast = createMockForecast(24, () => 60);
     render(
       <HourlyExposureChart
@@ -122,7 +161,9 @@ describe("HourlyExposureChart Component", () => {
     expect(screen.getByTestId("chart-floating-tooltip")).toHaveTextContent("22:00 IST");
 
     fireEvent.keyDown(scrubber, { key: "Escape" });
-    expect(screen.queryByTestId("chart-floating-tooltip")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId("chart-floating-tooltip")).not.toBeInTheDocument();
+    });
   });
 
   it("handles empty forecast [] safely without throwing or rendering NaN", () => {

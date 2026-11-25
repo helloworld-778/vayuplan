@@ -402,10 +402,6 @@ function AssistantWorkspaceContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F8FA] text-[#0F172A] overflow-x-clip">
-      <a href="#main-content" className="skip-to-content">
-        Skip to main content
-      </a>
-
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {liveAnnouncement}
       </div>
@@ -458,44 +454,39 @@ function AssistantWorkspaceContent() {
           isPlanLoading={isPlanLoading}
         />
 
-        {/* Two-Column AI-First Split Cockpit */}
+        {/* Two-Column AI-First Split Cockpit (Left Column strictly vertically stacked — zero 3-col squeeze) */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
           {/* Left Primary Intelligence Column */}
           <div className="min-w-0 space-y-6">
-            {/* Hero Band: Live Telemetry Sheet paired with Today's Smart Brief */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
-              <div className="xl:col-span-7">
-                <TelemetryHero
-                  snapshot={snapshot}
-                  isLoading={isTelemetryLoading}
-                  onRefresh={() => loadTelemetry(location)}
-                />
-              </div>
+            <TelemetryHero
+              snapshot={snapshot}
+              isLoading={isTelemetryLoading}
+              onRefresh={() => loadTelemetry(location)}
+            />
 
-              <div className="xl:col-span-5 flex flex-col">
-                {snapshot ? (
-                  <TodaysSmartBrief
-                    snapshot={snapshot}
-                    profile={profile}
-                    plan={plan}
-                    analytics={analytics}
-                    isPlanLoading={isPlanLoading}
-                    planError={planError}
-                    onRetryPlan={handleRetryPlan}
-                    onJumpToTab={handleJumpToTab}
-                    onAskCopilot={handleAskCopilot}
-                  />
-                ) : (
-                  <div className="h-full bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 animate-pulse space-y-4">
-                    <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
-                    <div className="h-4 w-full bg-[#F1F4F8] rounded" />
-                    <div className="h-4 w-5/6 bg-[#F1F4F8] rounded" />
-                    <div className="h-14 bg-[#F1F4F8] rounded-lg" />
-                    <div className="h-14 bg-[#F1F4F8] rounded-lg" />
-                  </div>
-                )}
+            {snapshot ? (
+              <TodaysSmartBrief
+                snapshot={snapshot}
+                profile={profile}
+                plan={plan}
+                analytics={analytics}
+                isPlanLoading={isPlanLoading}
+                planError={planError}
+                onRetryPlan={handleRetryPlan}
+                onJumpToTab={handleJumpToTab}
+                onAskCopilot={handleAskCopilot}
+              />
+            ) : (
+              <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 animate-pulse space-y-4">
+                <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
+                <div className="h-4 w-full bg-[#F1F4F8] rounded" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 3 Focused Analytical Tabs */}
             {snapshot && (
@@ -518,7 +509,7 @@ function AssistantWorkspaceContent() {
           {/* Right Persistent AI Copilot Rail (lg+ desktop viewports) */}
           <aside
             aria-label="Ask VayuPlan AI Copilot"
-            className="hidden lg:block sticky top-[80px]"
+            className="hidden lg:block sticky top-[84px]"
           >
             {snapshot ? (
               <GroundedChat
@@ -527,10 +518,10 @@ function AssistantWorkspaceContent() {
                 messages={chatMessages}
                 onMessagesChange={setChatMessages}
                 prefillRequest={copilotPrefill}
-                className="h-[calc(100vh-96px)]"
+                className="h-[calc(100vh-100px)]"
               />
             ) : (
-              <div className="h-[calc(100vh-96px)] bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-2 p-5 animate-pulse space-y-4">
+              <div className="h-[calc(100vh-100px)] bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-2 p-5 animate-pulse space-y-4">
                 <div className="h-10 bg-[#F1F4F8] rounded-lg" />
                 <div className="h-24 bg-[#F1F4F8] rounded-lg" />
                 <div className="h-12 bg-[#F1F4F8] rounded-lg" />
@@ -543,7 +534,8 @@ function AssistantWorkspaceContent() {
       {/* Mobile / Tablet Floating Copilot Trigger (<1024px) */}
       {snapshot && (
         <div className="lg:hidden fixed bottom-5 right-5 z-40">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             ref={mobileTriggerRef}
             type="button"
             onClick={() => setIsMobileCopilotOpen(true)}
@@ -553,7 +545,7 @@ function AssistantWorkspaceContent() {
           >
             <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Ask VayuPlan AI</span>
-          </button>
+          </motion.button>
         </div>
       )}
 

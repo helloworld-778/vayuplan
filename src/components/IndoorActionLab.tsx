@@ -8,6 +8,7 @@ import {
 } from "@/types/air-quality";
 import { ComputedAnalytics } from "@/lib/ai/types";
 import { getNaqiTheme } from "@/lib/aqi/theme";
+import { MechanismDisclosure } from "./MechanismDisclosure";
 import {
   Home,
   Wind,
@@ -153,14 +154,14 @@ export function IndoorActionLab({
             <div className="text-xs text-[#525E70] flex items-center gap-1.5 bg-[#F1F4F8] px-2.5 py-2 rounded-md">
               <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>
-                Mathematical estimate based on residential infiltration factors, not a physical sensor.
+                Mathematical estimate based on infiltration factors, not a physical sensor.
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Ventilation Directive Banner (Zero Eyebrow above H3) */}
+      {/* Ventilation Directive Banner */}
       <div
         className={`p-5 rounded-xl border ${directiveConfig.containerClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
       >
@@ -204,7 +205,7 @@ export function IndoorActionLab({
         )}
       </div>
 
-      {/* Quantified What-If Interventions Ledger */}
+      {/* Quantified What-If Interventions Ledger with Progressive Disclosure */}
       <section className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden">
         <div className="px-5 py-4 border-b border-[#DCE3EC] flex flex-wrap items-center justify-between gap-2 bg-[#F7F8FA]">
           <h3 className="font-display text-base font-semibold text-[#0F172A]">
@@ -219,25 +220,19 @@ export function IndoorActionLab({
           {indoorAir.interventions.map((item) => (
             <div
               key={item.id}
-              className="p-5 text-xs flex flex-col justify-between gap-4"
+              className="p-5 text-xs flex flex-col justify-between gap-3"
             >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <h4 className="font-semibold text-[#0F172A] text-sm">
-                    {item.title}
-                  </h4>
-                  <span className="inline-flex items-center gap-1 font-mono tabular-nums font-bold text-[#065F46] px-2 py-0.5 rounded bg-[#ECFDF5] border border-[#6EE7B7] text-xs shrink-0">
-                    <ArrowDownRight className="w-3.5 h-3.5" aria-hidden="true" />
-                    -{item.percentReduction}%
-                  </span>
-                </div>
-
-                <p className="text-[#334155] leading-relaxed">
-                  {item.explanation}
-                </p>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-semibold text-[#0F172A] text-sm">
+                  {item.title}
+                </h4>
+                <span className="inline-flex items-center gap-1 font-mono tabular-nums font-bold text-[#065F46] px-2 py-0.5 rounded bg-[#ECFDF5] border border-[#6EE7B7] text-xs shrink-0">
+                  <ArrowDownRight className="w-3.5 h-3.5" aria-hidden="true" />
+                  -{item.percentReduction}%
+                </span>
               </div>
 
-              <div className="pt-3 border-t border-[#DCE3EC] grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-[#F1F4F8] p-2.5 rounded-md">
                   <span className="text-[#525E70] block">Projected Indoor</span>
                   <span className="font-bold font-mono tabular-nums text-[#0F172A] text-sm">
@@ -254,6 +249,8 @@ export function IndoorActionLab({
                   </span>
                 </div>
               </div>
+
+              <MechanismDisclosure explanation={item.explanation} />
             </div>
           ))}
         </div>
@@ -279,11 +276,16 @@ export function IndoorActionLab({
                   </h4>
                   <p className="text-[#334155] leading-relaxed">{hack.action}</p>
                 </div>
-                <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
-                  <span className="font-semibold">Direct Impact: </span>
-                  <span className="text-[#065F46] font-medium">
-                    {hack.directImpact}
-                  </span>
+
+                <div className="space-y-2">
+                  <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
+                    <span className="font-semibold">Direct Impact: </span>
+                    <span className="text-[#065F46] font-medium">
+                      {hack.directImpact}
+                    </span>
+                  </div>
+
+                  <MechanismDisclosure explanation={hack.whyMechanism} />
                 </div>
               </div>
             ))}
