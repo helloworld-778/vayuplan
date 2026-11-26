@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import {
   Bricolage_Grotesque,
-  Schibsted_Grotesk,
+  Instrument_Sans,
   JetBrains_Mono,
 } from "next/font/google";
 import { MotionProvider } from "@/components/MotionProvider";
@@ -9,23 +9,23 @@ import "./globals.css";
 
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-vayu-display",
   display: "swap",
-  weight: ["500", "600", "700", "800"],
+  weight: ["600", "700"],
 });
 
-const sans = Schibsted_Grotesk({
+const sans = Instrument_Sans({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-vayu-sans",
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-vayu-mono",
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  weight: ["500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -44,10 +44,10 @@ export default function RootLayout({
       lang="en"
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
     >
-      <body className="min-h-screen bg-[#F7F8FA] text-[#0F172A] font-sans antialiased selection:bg-[#DBEAFE] selection:text-[#0F172A]">
+      <body className="min-h-screen bg-canvas text-ink font-sans antialiased selection:bg-accent/15 selection:text-ink">
         <a
           href="#main-content"
-          className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-[100] focus-visible:rounded-md focus-visible:bg-[#0F172A] focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-white focus-visible:shadow-lg"
+          className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-[100] focus-visible:rounded-md focus-visible:bg-obsidian focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-ink-on-dark focus-visible:outline-2 focus-visible:outline-accent-on-dark focus-visible:shadow-lg"
         >
           Skip to main content
         </a>

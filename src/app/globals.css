@@ -1,74 +1,162 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-display: var(--font-display);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --font-display: var(--font-vayu-display), "Bricolage Grotesque", "Instrument Sans", sans-serif;
+  --font-sans: var(--font-vayu-sans), "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-vayu-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Editorial Climate Flagship Color Utilities */
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-obsidian: var(--bg-obsidian);
+  --color-obsidian-elevated: var(--bg-obsidian-elevated);
+  --color-ink: var(--ink-primary);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-on-dark: var(--ink-on-dark);
+  --color-ink-on-dark-muted: var(--ink-on-dark-muted);
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-primary-hover);
+  --color-accent-on-dark: var(--accent-on-dark);
+
+  /* Split background vs border "subtle" tokens cleanly to prevent collision */
+  --background-color-canvas: var(--bg-canvas);
+  --background-color-surface: var(--bg-surface);
+  --background-color-subtle: var(--bg-subtle);
+  --background-color-obsidian: var(--bg-obsidian);
+  --background-color-obsidian-elevated: var(--bg-obsidian-elevated);
+
+  --border-color-subtle: var(--border-subtle);
+  --border-color-control: var(--border-control);
+  --border-color-dark: var(--border-dark);
 }
 
 @layer base {
   :root {
-    --font-display: "Bricolage Grotesque", "Schibsted Grotesk", sans-serif;
-    --font-sans: "Schibsted Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-display: var(--font-vayu-display), "Bricolage Grotesque", "Instrument Sans", sans-serif;
+    --font-sans: var(--font-vayu-sans), "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: var(--font-vayu-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* DESIGN.md Surface & Ink Tokens */
-    --bg-canvas: #F7F8FA;
-    --bg-sheet: #FFFFFF;
-    --bg-well: #F1F4F8;
-    --ink-primary: #0F172A;
-    --ink-secondary: #334155;
-    --ink-muted: #525E70;
-    --border-hairline: #DCE3EC;
-    --border-strong: #CBD5E1;
+    /* Editorial Climate Flagship — Surfaces & Ink */
+    --bg-canvas: #F9F8F5;
+    --bg-surface: #FFFFFF;
+    --bg-subtle: #F2F0EA;
+    --bg-obsidian: #0B1412;
+    --bg-obsidian-elevated: #13201D;
 
-    /* Primary Accent: Atmospheric Cobalt */
-    --accent-cobalt: #1D4ED8;
-    --accent-cobalt-deep: #1E40AF;
-    --accent-cobalt-wash: #EFF6FF;
+    --ink-primary: #111816;
+    --ink-secondary: #374440;
+    --ink-muted: #52605C;
+    --ink-on-dark: #F4F6F5;
+    --ink-on-dark-muted: #A7B7B2;
 
-    /* Elevation Levels 0-3 */
-    --shadow-level-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
-    --shadow-level-2: 0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
-    --shadow-level-3: 0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.05);
+    /* Accent Tokens (Signal Pine-Teal on light, Luminous Teal on obsidian) */
+    --accent-primary: #0F766E;
+    --accent-primary-hover: #115E59;
+    --accent-on-dark: #2DD4BF;
+
+    /* Hairline & WCAG SC 1.4.11 Solid Control Borders */
+    --border-subtle: #E3E0D7;
+    --border-control: #6B7874;
+    --border-dark: #243531;
+
+    /* CPCB NAQI Light & Dark-Surface Reference Tokens */
+    --naqi-good-text: #065F46;
+    --naqi-good-bg: #ECFDF5;
+    --naqi-good-dark-text: #6EE7B7;
+    --naqi-good-dark-bg: #0F2922;
+
+    --naqi-satisfactory-text: #3F6212;
+    --naqi-satisfactory-bg: #ECFCCB;
+    --naqi-satisfactory-dark-text: #BEF264;
+    --naqi-satisfactory-dark-bg: #1F2C12;
+
+    --naqi-moderate-text: #92400E;
+    --naqi-moderate-bg: #FFFBEB;
+    --naqi-moderate-dark-text: #FCD34D;
+    --naqi-moderate-dark-bg: #2D210B;
+
+    --naqi-poor-text: #9A3412;
+    --naqi-poor-bg: #FFF7ED;
+    --naqi-poor-dark-text: #FDBA74;
+    --naqi-poor-dark-bg: #311A0B;
+
+    --naqi-verypoor-text: #991B1B;
+    --naqi-verypoor-bg: #FEF2F2;
+    --naqi-verypoor-dark-text: #FCA5A5;
+    --naqi-verypoor-dark-bg: #331214;
+
+    --naqi-severe-text: #581C87;
+    --naqi-severe-bg: #FAF5FF;
+    --naqi-severe-dark-text: #D8B4FE;
+    --naqi-severe-dark-bg: #241433;
+
+    /* Elevation Levels 1-3 calibrated to Pine-Obsidian ink */
+    --shadow-level-1: 0 1px 2px rgba(11, 20, 18, 0.04), 0 4px 12px rgba(11, 20, 18, 0.03);
+    --shadow-level-2: 0 4px 16px rgba(11, 20, 18, 0.06), 0 1px 3px rgba(11, 20, 18, 0.04);
+    --shadow-level-3: 0 12px 32px -4px rgba(11, 20, 18, 0.14), 0 2px 6px rgba(11, 20, 18, 0.06);
   }
 
   html {
     scroll-behavior: smooth;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-
-    .animate-pulse {
-      animation: none;
-    }
-  }
-
   body {
     background-color: var(--bg-canvas);
     color: var(--ink-primary);
     font-family: var(--font-sans);
+    caret-color: var(--accent-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background-color: #DBEAFE;
-    color: #0F172A;
+    background-color: #CCFBF1;
+    color: var(--ink-primary);
   }
 
-  /* Accessible focus ring system */
+  /* Accessible high-contrast focus ring */
   :focus-visible {
-    outline: 2px solid #1D4ED8;
+    outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
   }
 }
 
-.font-display {
-  font-family: var(--font-display);
+/* Reduced-motion safeguard for scroll and all Tailwind animation utilities */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+
+  .disclosure-grid {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Zero-reflow CSS Grid Accordion replacing height: auto JS animations */
+.disclosure-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.disclosure-grid[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.disclosure-grid-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Tabular numerals for telemetry and metrics */
@@ -97,14 +185,6 @@
   }
 }
 
-/* Subtle 32px Atmospheric Graph-Vellum Drafting Grid */
-.bg-drafting-grid {
-  background-image:
-    linear-gradient(to right, rgba(203, 213, 225, 0.42) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(203, 213, 225, 0.42) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
-
 /* Elevation Level Utilities */
 .elevation-1 {
   box-shadow: var(--shadow-level-1);
@@ -118,7 +198,7 @@
   box-shadow: var(--shadow-level-3);
 }
 
-/* Custom hairline borders */
+/* Subtle structural hairline helper */
 .border-hairline {
-  border-color: #DCE3EC;
+  border-color: var(--border-subtle);
 }
