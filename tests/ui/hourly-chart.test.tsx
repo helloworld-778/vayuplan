@@ -59,6 +59,7 @@ describe("HourlyExposureChart Component", () => {
 
     const svgHtml = container.querySelector("svg")?.outerHTML || "";
     expect(svgHtml).not.toContain("NaN");
+    expect(container.querySelectorAll("svg text").length).toBe(0);
   });
 
   it("renders both BEST 2H and PEAK SMOG bands even when 48h bestWindow timestamp lies beyond the 36h slice", () => {

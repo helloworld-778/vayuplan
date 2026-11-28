@@ -8,7 +8,6 @@ import {
   HouseholdProfile,
 } from "@/types/air-quality";
 import {
-  MessageSquare,
   Send,
   Sparkles,
   Cpu,
@@ -43,7 +42,7 @@ function TypingDotsIndicator() {
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2.5 text-xs text-[#334155] bg-[#F1F4F8] px-3.5 py-2.5 rounded-lg w-fit border border-[#DCE3EC]"
+      className="flex items-center gap-2.5 text-xs text-ink-secondary py-2"
     >
       <span className="inline-flex items-center gap-1" aria-hidden="true">
         {[0, 1, 2].map((idx) => (
@@ -56,7 +55,7 @@ function TypingDotsIndicator() {
               delay: idx * 0.16,
               ease: "easeInOut",
             }}
-            className="w-1.5 h-1.5 rounded-full bg-[#1D4ED8]"
+            className="w-1.5 h-1.5 rounded-full bg-accent"
           />
         ))}
       </span>
@@ -82,7 +81,7 @@ export function GroundedChat({
     null
   );
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   const messages = controlledMessages ?? internalMessages;
@@ -92,10 +91,17 @@ export function GroundedChat({
   const cleanPersona = profile.persona.replaceAll("_", " ");
 
   useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(120, Math.max(44, el.scrollHeight))}px`;
+  }, [question]);
+
+  useEffect(() => {
     if (prefillRequest && prefillRequest.seq > 0) {
       setQuestion(prefillRequest.text.slice(0, 400));
       const timer = setTimeout(() => {
-        inputRef.current?.focus();
+        textareaRef.current?.focus();
       }, 60);
       return () => clearTimeout(timer);
     }
@@ -193,29 +199,24 @@ export function GroundedChat({
 
   return (
     <div
-      className={`bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl elevation-2 overflow-hidden flex flex-col min-h-[380px] lg:min-h-0 ${className}`}
+      className={`bg-surface border border-subtle rounded-xl elevation-2 overflow-hidden flex flex-col min-h-[380px] lg:min-h-0 ${className}`}
     >
-      {/* Stratospheric Navy Header Anchor */}
-      <div className="px-4 py-3.5 bg-[#0F172A] text-[#FFFFFF] flex items-center justify-between gap-2 border-b border-[#1E293B]">
+      {/* Quiet Frameless Editorial Copilot Header */}
+      <div className="px-5 py-3.5 bg-surface border-b border-subtle flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-8 h-8 rounded-lg bg-[#1E293B] border border-[#334155] flex items-center justify-center shrink-0">
-            <MessageSquare
-              className="w-4 h-4 text-[#93C5FD]"
-              aria-hidden="true"
-            />
-          </span>
+          <Sparkles className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="font-display text-sm font-semibold tracking-tight text-[#FFFFFF] truncate">
+            <h2 className="font-display text-base font-semibold tracking-tight text-ink truncate">
               Ask VayuPlan
             </h2>
-            <p className="text-xs text-[#CBD5E1] truncate">
+            <p className="text-xs text-ink-muted truncate">
               Grounded AI Copilot
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-xs font-mono tabular-nums px-2.5 py-1 rounded bg-[#1E293B] border border-[#334155] text-[#E2E8F0]">
+          <span className="text-xs font-mono tabular-nums px-2.5 py-1 rounded-md bg-subtle border border-subtle text-ink-secondary">
             {city} · NAQI {snapshot.naqi}
           </span>
 
@@ -229,9 +230,9 @@ export function GroundedChat({
               }}
               aria-label="Clear chat conversation"
               title="Clear chat"
-              className="min-h-[36px] px-2 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#E2E8F0] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#93C5FD]"
+              className="min-h-[44px] min-w-[44px] px-2.5 rounded-lg border border-control bg-surface hover:border-accent text-ink-secondary hover:text-ink flex items-center justify-center transition-colors"
             >
-              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
 
@@ -240,7 +241,7 @@ export function GroundedChat({
               type="button"
               onClick={onCloseDrawer}
               aria-label="Close Ask VayuPlan Copilot"
-              className="min-h-[44px] min-w-[44px] rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#FFFFFF] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#93C5FD]"
+              className="min-h-[44px] min-w-[44px] rounded-lg border border-control bg-surface hover:border-obsidian text-ink flex items-center justify-center transition-colors"
             >
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -248,27 +249,22 @@ export function GroundedChat({
         </div>
       </div>
 
-      {/* Scrollable Message Stream */}
-      <div
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions"
-        className="flex-1 p-4 space-y-4 overflow-y-auto overscroll-contain bg-[#FFFFFF]"
-      >
+      {/* Frameless Canvas Stream */}
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto overscroll-contain bg-surface">
         {messages.length === 0 ? (
-          <div className="space-y-4 py-2">
-            <div className="rounded-lg bg-[#F1F4F8] p-3.5">
-              <p className="text-xs font-semibold text-[#0F172A]">
+          <div className="space-y-5 py-1">
+            <div>
+              <p className="text-sm font-semibold text-ink">
                 Live Telemetry Advisor Ready
               </p>
-              <p className="mt-1 text-xs text-[#334155] leading-relaxed">
+              <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
                 Ask about your schedule, transit exposure, masks, or home ventilation in{" "}
-                {city}. Replies cite active CPCB readings and Stage 2 physics—never fabricated numbers.
+                {city}. Answers cite live CPCB telemetry and microenvironment math directly.
               </p>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-[#525E70]">
+            <div className="space-y-2.5">
+              <p className="text-xs font-medium text-ink-muted">
                 Suggested prompts for your context
               </p>
               <div className="grid grid-cols-1 gap-2">
@@ -279,7 +275,7 @@ export function GroundedChat({
                     type="button"
                     disabled={isLoading}
                     onClick={() => handleSubmit(q)}
-                    className="p-3 min-h-[44px] text-xs text-[#0F172A] bg-[#F1F4F8] border border-[#DCE3EC] hover:border-[#1D4ED8] hover:bg-[#EFF6FF] rounded-lg transition-colors text-left leading-relaxed"
+                    className="p-3.5 min-h-[44px] text-xs text-ink bg-canvas border border-subtle hover:border-accent hover:bg-accent-wash rounded-lg transition-colors text-left leading-relaxed"
                   >
                     &ldquo;{q}&rdquo;
                   </motion.button>
@@ -288,78 +284,87 @@ export function GroundedChat({
             </div>
           </div>
         ) : (
-          <AnimatePresence initial={false}>
-            {messages.map((m) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`flex flex-col ${
-                  m.sender === "user" ? "items-end" : "items-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[92%] rounded-lg p-3.5 text-sm leading-relaxed break-words ${
-                    m.sender === "user"
-                      ? "bg-[#0F172A] text-[#FFFFFF]"
-                      : "bg-[#F1F4F8] border border-[#DCE3EC] text-[#0F172A]"
+          <div
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            className="space-y-5"
+          >
+            <AnimatePresence initial={false}>
+              {messages.map((m) => (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={`flex flex-col ${
+                    m.sender === "user" ? "items-end" : "items-start"
                   }`}
                 >
-                  {m.sender === "assistant" && (
-                    <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#DCE3EC]">
-                      {m.mode === "ai" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1D4ED8]">
-                          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>Gemini AI</span>
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#334155]"
-                          title={
-                            m.fallbackReason
-                              ? `Computed via Stage 2 physics (${m.fallbackReason})`
-                              : "Computed via Stage 2 microenvironment physics"
-                          }
-                          data-fallback-reason={m.fallbackReason}
-                        >
-                          <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>Deterministic Physics Fallback</span>
-                        </span>
-                      )}
-
-                      <span className="text-xs font-mono tabular-nums text-[#525E70] ml-auto">
-                        {m.timestamp}
-                      </span>
+                  {m.sender === "user" ? (
+                    <div className="max-w-[88%] rounded-2xl rounded-br-sm bg-obsidian text-ink-on-dark px-4 py-2.5 text-sm leading-relaxed break-words">
+                      {m.text}
                     </div>
-                  )}
-
-                  <div className="space-y-1.5 whitespace-pre-line text-sm leading-relaxed break-words">
-                    {m.text}
-                  </div>
-
-                  {m.citedMetrics && m.citedMetrics.length > 0 && (
-                    <div className="mt-3 pt-2.5 border-t border-[#DCE3EC] space-y-1.5">
-                      <span className="text-xs font-semibold text-[#525E70] flex items-center gap-1">
-                        <Tag className="w-3 h-3" aria-hidden="true" />
-                        <span>Cited Live Metrics</span>
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {m.citedMetrics.map((metric, i) => (
-                          <span
-                            key={i}
-                            className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[#FFFFFF] text-[#0F172A] border border-[#DCE3EC]"
-                          >
-                            {metric}
+                  ) : (
+                    <article className="w-full pb-5 border-b border-subtle last:border-b-0 space-y-2.5 text-ink">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {m.mode === "ai" ? (
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-accent">
+                            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>Gemini AI</span>
                           </span>
-                        ))}
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 font-semibold text-ink-secondary"
+                            title={
+                              m.fallbackReason
+                                ? `Computed via Stage 2 physics (${m.fallbackReason})`
+                                : "Computed via Stage 2 microenvironment physics"
+                            }
+                            data-fallback-reason={m.fallbackReason}
+                          >
+                            <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>Deterministic Physics Fallback</span>
+                            <span className="sr-only">
+                              {" "}
+                              — Rule-based backup answer while live Gemini AI is unavailable.
+                            </span>
+                          </span>
+                        )}
+
+                        <span className="text-xs font-mono tabular-nums text-ink-muted ml-auto">
+                          {m.timestamp}
+                        </span>
                       </div>
-                    </div>
+
+                      <div className="space-y-1.5 whitespace-pre-line text-sm leading-relaxed text-ink-secondary break-words">
+                        {m.text}
+                      </div>
+
+                      {m.citedMetrics && m.citedMetrics.length > 0 && (
+                        <div className="pt-2 space-y-1.5">
+                          <span className="text-xs font-semibold text-ink-muted flex items-center gap-1">
+                            <Tag className="w-3 h-3" aria-hidden="true" />
+                            <span>Cited Live Metrics</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {m.citedMetrics.map((metric, i) => (
+                              <span
+                                key={i}
+                                className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-subtle text-ink border border-subtle"
+                              >
+                                {metric}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </article>
                   )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
 
         {isLoading && <TypingDotsIndicator />}
@@ -367,7 +372,7 @@ export function GroundedChat({
         {error && (
           <div
             role="alert"
-            className="p-3 bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] text-xs rounded-lg flex items-center justify-between gap-2"
+            className="p-3 bg-danger-surface border border-danger text-danger text-xs rounded-lg flex items-center justify-between gap-2"
           >
             <span>{error}</span>
             {lastFailedQuestion && (
@@ -376,9 +381,9 @@ export function GroundedChat({
                 onClick={() =>
                   handleSubmit(lastFailedQuestion, { isRetry: true })
                 }
-                className="inline-flex items-center gap-1 px-2.5 min-h-[36px] rounded bg-[#FFFFFF] border border-[#FCA5A5] font-semibold text-[#991B1B] shrink-0"
+                className="inline-flex items-center gap-1 px-3 min-h-[44px] rounded-lg bg-surface border border-danger font-semibold text-danger shrink-0"
               >
-                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Retry</span>
               </button>
             )}
@@ -388,40 +393,46 @@ export function GroundedChat({
         <div ref={threadEndRef} />
       </div>
 
-      {/* Sticky Bottom 400-Char Composer */}
+      {/* Auto-Expanding Textarea Composer */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleSubmit(question);
         }}
-        className="p-3 border-t border-[#DCE3EC] bg-[#F7F8FA]"
+        className="p-3.5 border-t border-subtle bg-canvas"
       >
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
+        <div className="flex items-end gap-2 bg-surface border border-control focus-within:border-accent rounded-xl p-1.5 transition-colors">
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={question}
             maxLength={400}
             onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(question);
+              }
+            }}
             placeholder="Ask anything about today's air quality, masks, windows..."
             aria-label="Ask VayuPlan a question"
             disabled={isLoading}
-            className="flex-1 min-w-0 text-base sm:text-sm px-3.5 min-h-[44px] bg-[#FFFFFF] border border-[#64748B]/70 rounded-lg text-[#0F172A] placeholder:text-[#525E70] focus:border-[#1D4ED8] transition-colors"
+            className="flex-1 min-w-0 resize-none text-base sm:text-sm px-2.5 py-2.5 min-h-[44px] max-h-[120px] bg-transparent text-ink placeholder:text-ink-muted focus:outline-none leading-snug"
           />
           <motion.button
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={isLoading || !question.trim()}
             aria-label="Send question"
-            className="px-4 min-h-[44px] bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] rounded-lg disabled:opacity-55 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
+            className="px-4 min-h-[44px] bg-accent hover:bg-accent-hover text-white rounded-lg disabled:opacity-55 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
           >
             <Send className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Ask</span>
           </motion.button>
         </div>
 
-        <div className="flex justify-between items-center text-xs text-[#525E70] mt-1.5 px-1">
-          <span>Grounded strictly in live station data</span>
+        <div className="flex justify-between items-center text-xs text-ink-muted mt-1.5 px-1">
+          <span>Enter to send · Shift+Enter for new line</span>
           <span className="font-mono tabular-nums">
             {question.length} / 400
           </span>

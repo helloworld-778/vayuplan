@@ -58,16 +58,16 @@ export function TodaysSmartBrief({
     return (
       <section
         aria-label="Today's Smart Brief loading"
-        className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl overflow-hidden elevation-1 animate-pulse"
+        className="bg-surface border border-subtle rounded-xl overflow-hidden elevation-1 animate-pulse"
       >
-        <div className="h-1 bg-[#1D4ED8]/40" />
+        <div className="h-0.5 bg-accent/40" />
         <div className="p-6 space-y-4">
-          <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
-          <div className="h-4 w-full bg-[#F1F4F8] rounded" />
+          <div className="h-5 w-40 bg-subtle rounded" />
+          <div className="h-4 w-full bg-subtle rounded" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
-            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
-            <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+            <div className="h-20 bg-subtle rounded-lg" />
+            <div className="h-20 bg-subtle rounded-lg" />
+            <div className="h-20 bg-subtle rounded-lg" />
           </div>
         </div>
       </section>
@@ -79,15 +79,18 @@ export function TodaysSmartBrief({
       <section
         aria-label="Today's Smart Brief error"
         role="alert"
-        className="bg-[#FFFFFF] border border-[#FCA5A5] rounded-xl p-6 elevation-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm text-[#991B1B]"
+        className="bg-surface border border-danger rounded-xl p-6 elevation-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm text-danger"
       >
         <div className="flex items-start gap-2.5">
-          <AlertCircle className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5" aria-hidden="true" />
+          <AlertCircle
+            className="w-5 h-5 text-danger-icon shrink-0 mt-0.5"
+            aria-hidden="true"
+          />
           <div>
-            <h2 className="font-display text-base font-semibold text-[#0F172A]">
+            <h2 className="font-display text-base font-semibold text-ink">
               Smart Brief Unavailable
             </h2>
-            <p className="mt-1 text-xs text-[#991B1B] leading-relaxed">
+            <p className="mt-1 text-xs text-danger leading-relaxed">
               {planError}
             </p>
           </div>
@@ -96,7 +99,7 @@ export function TodaysSmartBrief({
           <button
             type="button"
             onClick={onRetryPlan}
-            className="w-fit inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] hover:border-[#991B1B] text-[#991B1B] text-xs font-semibold transition-colors shrink-0"
+            className="w-fit inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg bg-danger-surface border border-danger hover:border-obsidian text-danger text-xs font-semibold transition-colors shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Retry Plan Synthesis</span>
@@ -110,16 +113,16 @@ export function TodaysSmartBrief({
     return (
       <section
         aria-label="Today's Smart Brief"
-        className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 flex flex-wrap items-center justify-between gap-3 text-sm text-[#525E70]"
+        className="bg-surface border border-subtle rounded-xl p-6 elevation-1 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-muted"
       >
         <p>Smart brief unavailable. Refresh telemetry or retry plan calculation.</p>
         {onRetryPlan && (
           <button
             type="button"
             onClick={onRetryPlan}
-            className="w-fit inline-flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] text-[#0F172A] text-xs font-semibold hover:border-[#1D4ED8] transition-colors"
+            className="w-fit inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg border border-control bg-surface text-ink text-xs font-semibold hover:border-accent transition-colors"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-[#1D4ED8]" aria-hidden="true" />
+            <RefreshCw className="w-3.5 h-3.5 text-accent" aria-hidden="true" />
             <span>Generate Brief</span>
           </button>
         )}
@@ -172,23 +175,23 @@ export function TodaysSmartBrief({
   return (
     <section
       aria-label="Today's Smart Brief"
-      className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden"
+      className="bg-surface border border-subtle rounded-xl elevation-1 overflow-hidden"
     >
-      {/* Atmospheric Cobalt Top Accent Bar */}
-      <div aria-hidden="true" className="h-1 bg-[#1D4ED8]" />
+      {/* Subtle Pine-Teal Top Structural Accent */}
+      <div aria-hidden="true" className="h-0.5 bg-accent" />
 
       <div className="p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="font-display text-lg font-semibold tracking-tight text-[#0F172A]">
+            <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
               Today&apos;s Smart Brief
             </h2>
 
             {isAi ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-accent-wash text-accent border border-accent-border text-xs font-semibold">
                 <span className="relative flex h-2 w-2" aria-hidden="true">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1D4ED8] opacity-60" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1D4ED8]" />
+                  <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
                 </span>
                 <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Gemini AI</span>
@@ -196,10 +199,17 @@ export function TodaysSmartBrief({
             ) : (
               <span
                 data-fallback-reason={plan.fallbackReason}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F1F4F8] text-[#334155] border border-[#DCE3EC] text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-subtle text-ink-secondary border border-subtle text-xs font-semibold"
               >
                 <Cpu className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Deterministic Physics Fallback</span>
+                <span className="sr-only">
+                  {" "}
+                  — Rule-based backup guidance active while live Gemini synthesis is unavailable
+                  {plan.fallbackReason
+                    ? ` (${plan.fallbackReason.replaceAll("_", " ")})`
+                    : ""}.
+                </span>
               </span>
             )}
           </div>
@@ -208,7 +218,7 @@ export function TodaysSmartBrief({
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={handleAskAboutBrief}
-            className="inline-flex items-center justify-center gap-2 px-3.5 min-h-[40px] rounded-lg bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[#1D4ED8] border border-[#BFDBFE] text-xs font-semibold transition-colors shrink-0"
+            className="inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-accent-wash hover:bg-accent text-accent hover:text-white border border-accent-border hover:border-accent text-xs font-semibold transition-colors shrink-0"
           >
             <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Ask Copilot about this brief</span>
@@ -216,38 +226,38 @@ export function TodaysSmartBrief({
         </div>
 
         {isPlanLoading && (
-          <p className="text-xs font-medium text-[#1D4ED8]">
+          <p className="text-xs font-medium text-accent">
             Updating synthesis for updated household parameters...
           </p>
         )}
 
-        <p className="text-sm leading-relaxed text-[#334155] max-w-3xl">
+        <p className="text-sm leading-relaxed text-ink-secondary max-w-3xl">
           {conciseSummary(plan.summary)}
         </p>
 
-        {/* Top 3 Prioritized Impact Cards (Responsive 3-col strip with zero clipping) */}
+        {/* Top 3 Prioritized Impact Jump Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           <motion.button
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => onJumpToTab("routine")}
-            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+            className="min-w-0 text-left rounded-lg border border-subtle bg-subtle hover:bg-accent-wash hover:border-accent p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted group-hover:text-accent">
                 <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Best Outdoor Window</span>
               </span>
               <ArrowUpRight
-                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                className="w-3.5 h-3.5 text-ink-muted group-hover:text-accent shrink-0"
                 aria-hidden="true"
               />
             </div>
             <div>
-              <div className="font-mono tabular-nums text-base font-bold text-[#0F172A]">
+              <div className="font-mono tabular-nums text-base font-bold text-ink">
                 {outdoorImpactMetric}
               </div>
-              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+              <div className="text-xs tabular-nums text-ink-secondary mt-0.5 leading-snug">
                 {outdoorDetail}
               </div>
             </div>
@@ -257,23 +267,23 @@ export function TodaysSmartBrief({
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => onJumpToTab("commute")}
-            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+            className="min-w-0 text-left rounded-lg border border-subtle bg-subtle hover:bg-accent-wash hover:border-accent p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted group-hover:text-accent">
                 <TrainFront className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Best Transit Switch</span>
               </span>
               <ArrowUpRight
-                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                className="w-3.5 h-3.5 text-ink-muted group-hover:text-accent shrink-0"
                 aria-hidden="true"
               />
             </div>
             <div>
-              <div className="font-mono tabular-nums text-base font-bold text-[#065F46]">
+              <div className="font-mono tabular-nums text-base font-bold text-success">
                 {transitImpactMetric}
               </div>
-              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+              <div className="text-xs tabular-nums text-ink-secondary mt-0.5 leading-snug">
                 {transitDetail}
               </div>
             </div>
@@ -283,23 +293,23 @@ export function TodaysSmartBrief({
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => onJumpToTab("indoor")}
-            className="min-w-0 text-left rounded-lg border border-[#DCE3EC] bg-[#F1F4F8] hover:bg-[#EFF6FF] hover:border-[#1D4ED8] p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
+            className="min-w-0 text-left rounded-lg border border-subtle bg-subtle hover:bg-accent-wash hover:border-accent p-3.5 min-h-[44px] transition-colors flex flex-col justify-between gap-2 group"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#525E70] group-hover:text-[#1D4ED8]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted group-hover:text-accent">
                 <Home className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Indoor Ventilation Directive</span>
               </span>
               <ArrowUpRight
-                className="w-3.5 h-3.5 text-[#525E70] group-hover:text-[#1D4ED8] shrink-0"
+                className="w-3.5 h-3.5 text-ink-muted group-hover:text-accent shrink-0"
                 aria-hidden="true"
               />
             </div>
             <div>
-              <div className="font-display text-base font-bold text-[#0F172A]">
+              <div className="font-display text-base font-bold text-ink">
                 {indoorImpactMetric}
               </div>
-              <div className="text-xs tabular-nums text-[#334155] mt-0.5 leading-snug">
+              <div className="text-xs tabular-nums text-ink-secondary mt-0.5 leading-snug">
                 {indoorDetail}
               </div>
             </div>

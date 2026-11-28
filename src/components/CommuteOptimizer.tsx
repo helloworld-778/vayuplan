@@ -37,91 +37,91 @@ export function CommuteOptimizer({
 
   return (
     <div className="space-y-6">
-      {/* Unified Two-Column Insights Sheet */}
-      <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC] overflow-hidden">
+      {/* Unified Two-Column Insights Sheet (symmetrical gap-px track) */}
+      <div className="rounded-xl border border-subtle bg-border-subtle gap-px grid grid-cols-1 md:grid-cols-2 overflow-hidden elevation-1">
         {commuteImpact.recommendedAlternative ? (
-          <div className="p-5 flex flex-col justify-between gap-4">
+          <div className="bg-surface p-5 flex flex-col justify-between gap-4">
             <div>
-              <h3 className="font-display text-base font-semibold text-[#0F172A]">
+              <h3 className="font-display text-base font-semibold text-ink">
                 Switch to {commuteImpact.recommendedAlternative.label}
               </h3>
-              <p className="text-xs text-[#525E70] mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 vs. {getCommuteModeLabel(profile.currentCommuteMode)}
               </p>
 
-              <p className="mt-2.5 text-xs text-[#334155] leading-relaxed">
+              <p className="mt-2.5 text-xs text-ink-secondary leading-relaxed">
                 {commuteImpact.recommendedAlternative.healthAdvisory}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#DCE3EC] text-xs">
-              <div className="bg-[#F1F4F8] p-3 rounded-lg">
-                <div className="text-xs text-[#525E70]">Monthly CO₂ Saved</div>
-                <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-[#065F46]">
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
+              <div className="bg-subtle p-3 rounded-lg">
+                <div className="text-xs text-ink-muted">Monthly CO₂ Saved</div>
+                <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-success">
                   {commuteImpact.recommendedAlternative.monthlyCo2SavedKg} kg
                 </div>
-                <div className="text-xs text-[#525E70]">22 workdays / mo</div>
+                <div className="text-xs text-ink-muted">22 workdays / mo</div>
               </div>
 
-              <div className="bg-[#F1F4F8] p-3 rounded-lg">
-                <div className="text-xs text-[#525E70]">Inhaled PM2.5 Delta</div>
-                <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-[#0F172A]">
+              <div className="bg-subtle p-3 rounded-lg">
+                <div className="text-xs text-ink-muted">Inhaled PM2.5 Delta</div>
+                <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-ink">
                   {commuteImpact.recommendedAlternative.deltaInhaledPm25Percent}%
                 </div>
-                <div className="text-xs text-[#525E70]">per round-trip</div>
+                <div className="text-xs text-ink-muted">per round-trip</div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="p-5 flex flex-col justify-center gap-2">
+          <div className="bg-surface p-5 flex flex-col justify-center gap-2">
             <div className="flex items-center gap-2">
               <CheckCircle2
-                className="w-4 h-4 text-[#065F46] shrink-0"
+                className="w-4 h-4 text-success shrink-0"
                 aria-hidden="true"
               />
-              <h3 className="font-display text-base font-semibold text-[#0F172A]">
+              <h3 className="font-display text-base font-semibold text-ink">
                 Already at Optimal Transit Baseline
               </h3>
             </div>
-            <p className="text-xs text-[#334155] leading-relaxed">
+            <p className="text-xs text-ink-secondary leading-relaxed">
               Remote work or zero-emission travel is active. No motorized switch required.
             </p>
           </div>
         )}
 
-        <div className="p-5 flex flex-col justify-between gap-4">
+        <div className="bg-surface p-5 flex flex-col justify-between gap-4">
           <div>
-            <h3 className="font-display text-base font-semibold text-[#0F172A]">
+            <h3 className="font-display text-base font-semibold text-ink">
               N95 Respirator Upgrade Impact
             </h3>
-            <p className="text-xs text-[#525E70] mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Personal respiratory shield across roadside corridors
             </p>
 
-            <p className="mt-2.5 text-xs text-[#334155] leading-relaxed">
+            <p className="mt-2.5 text-xs text-ink-secondary leading-relaxed">
               {commuteImpact.maskUpgradeImpact.explanation}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#DCE3EC] text-xs">
-            <div className="bg-[#F1F4F8] p-3 rounded-lg">
-              <div className="text-xs text-[#525E70]">Dose Reduction</div>
-              <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-[#065F46]">
+          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
+            <div className="bg-subtle p-3 rounded-lg">
+              <div className="text-xs text-ink-muted">Dose Reduction</div>
+              <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-success">
                 {commuteImpact.maskUpgradeImpact.percentSaved}%
               </div>
-              <div className="text-xs text-[#525E70]">
+              <div className="text-xs text-ink-muted">
                 {profile.maskType === "n95"
                   ? "N95 baseline active"
                   : `${MASK_DISPLAY[profile.maskType]} → N95`}
               </div>
             </div>
 
-            <div className="bg-[#F1F4F8] p-3 rounded-lg">
-              <div className="text-xs text-[#525E70]">PM2.5 Saved</div>
-              <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-[#0F172A]">
+            <div className="bg-subtle p-3 rounded-lg">
+              <div className="text-xs text-ink-muted">PM2.5 Saved</div>
+              <div className="mt-0.5 text-lg font-bold font-mono tabular-nums text-ink">
                 {commuteImpact.maskUpgradeImpact.savedInhaledUg} µg
               </div>
-              <div className="text-xs text-[#525E70]">per round-trip</div>
+              <div className="text-xs text-ink-muted">per round-trip</div>
             </div>
           </div>
         </div>
@@ -131,10 +131,10 @@ export function CommuteOptimizer({
       {isHighSmog && (
         <div
           role="alert"
-          className="p-4 rounded-xl border border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B] text-xs flex items-start gap-3"
+          className="p-4 rounded-xl border border-danger bg-danger-surface text-danger text-xs flex items-start gap-3"
         >
           <AlertTriangle
-            className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5"
+            className="w-5 h-5 text-danger-icon shrink-0 mt-0.5"
             aria-hidden="true"
           />
           <div>
@@ -149,19 +149,19 @@ export function CommuteOptimizer({
         </div>
       )}
 
-      {/* 6 Modes Comparison Table */}
-      <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl overflow-hidden elevation-1">
-        <div className="p-5 border-b border-[#DCE3EC] flex flex-wrap items-center justify-between gap-2">
+      {/* 6 Modes Comparison Table with Sticky Column 1 on Mobile Horizontal Scroll */}
+      <div className="bg-surface border border-subtle rounded-xl overflow-hidden elevation-1">
+        <div className="p-5 border-b border-subtle flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="font-display text-base font-semibold text-[#0F172A]">
+            <h3 className="font-display text-base font-semibold text-ink">
               Indian Urban Transit Modes Compared
             </h3>
-            <p className="text-xs text-[#525E70] mt-0.5 font-mono tabular-nums">
+            <p className="text-xs text-ink-muted mt-0.5 font-mono tabular-nums">
               Round-trip: {commuteImpact.roundTripKm} km · Ambient PM2.5:{" "}
               {commuteImpact.outdoorPm25.toFixed(1)} µg/m³
             </p>
           </div>
-          <span className="sm:hidden text-xs text-[#525E70]">
+          <span className="sm:hidden text-xs text-ink-muted">
             Scroll table right →
           </span>
         </div>
@@ -171,9 +171,14 @@ export function CommuteOptimizer({
             <caption className="sr-only">
               Comparison of 6 Indian urban commute modes across travel time, inhaled PM2.5 dose, daily CO2, and monthly CO2 delta
             </caption>
-            <thead className="bg-[#F1F4F8] border-b border-[#DCE3EC] text-[#525E70] font-semibold">
+            <thead className="bg-subtle border-b border-subtle text-ink-muted font-semibold">
               <tr>
-                <th scope="col" className="py-3 px-4">Transit Mode</th>
+                <th
+                  scope="col"
+                  className="sticky left-0 z-10 bg-subtle py-3 px-4 border-r border-subtle"
+                >
+                  Transit Mode
+                </th>
                 <th scope="col" className="py-3 px-3">Round-Trip Time</th>
                 <th scope="col" className="py-3 px-3">Inhaled PM2.5</th>
                 <th scope="col" className="py-3 px-3">Daily CO₂</th>
@@ -181,66 +186,73 @@ export function CommuteOptimizer({
                 <th scope="col" className="py-3 px-4">Health &amp; Emission Guidance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#DCE3EC]">
+            <tbody className="divide-y divide-subtle">
               {commuteImpact.modes.map((m) => {
                 const isCurrent = m.mode === profile.currentCommuteMode;
                 const isAlternative =
                   m.mode === commuteImpact.recommendedAlternative?.mode;
+                const rowBgClass = isAlternative
+                  ? "bg-success-surface"
+                  : isCurrent
+                  ? "bg-canvas"
+                  : "bg-surface";
 
                 return (
                   <tr
                     key={m.mode}
                     className={`transition-colors ${
                       isAlternative
-                        ? "bg-[#ECFDF5]/60"
+                        ? "bg-success-surface"
                         : isCurrent
-                        ? "bg-[#F7F8FA]"
-                        : "hover:bg-[#F7F8FA]"
+                        ? "bg-canvas"
+                        : "hover:bg-canvas"
                     }`}
                   >
-                    <td className="py-3 px-4 font-semibold text-[#0F172A]">
+                    <td
+                      className={`sticky left-0 z-10 py-3 px-4 font-semibold text-ink border-r border-subtle ${rowBgClass}`}
+                    >
                       <div className="flex items-center gap-2">
                         <span>{m.label}</span>
                         {isCurrent && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-[#0F172A] text-[#FFFFFF] font-semibold">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-obsidian text-ink-on-dark font-semibold">
                             CURRENT
                           </span>
                         )}
                         {isAlternative && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-[#065F46] text-[#FFFFFF] font-semibold">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-success text-white font-semibold">
                             PICK
                           </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="py-3 px-3 font-mono tabular-nums text-[#334155]">
+                    <td className="py-3 px-3 font-mono tabular-nums text-ink-secondary">
                       {m.roundTripMinutes} min
                     </td>
 
-                    <td className="py-3 px-3 font-mono tabular-nums font-semibold text-[#0F172A]">
+                    <td className="py-3 px-3 font-mono tabular-nums font-semibold text-ink">
                       {m.inhaledPm25Ug.toFixed(1)} µg
                     </td>
 
-                    <td className="py-3 px-3 font-mono tabular-nums text-[#334155]">
+                    <td className="py-3 px-3 font-mono tabular-nums text-ink-secondary">
                       {m.dailyCo2Grams.toFixed(0)} g
                     </td>
 
                     <td className="py-3 px-3 font-mono tabular-nums font-semibold">
                       {m.monthlyCo2SavedKg > 0 ? (
-                        <span className="text-[#065F46]">
+                        <span className="text-success">
                           +{m.monthlyCo2SavedKg} kg
                         </span>
                       ) : m.monthlyCo2SavedKg < 0 ? (
-                        <span className="text-[#991B1B]">
+                        <span className="text-danger">
                           {m.monthlyCo2SavedKg} kg
                         </span>
                       ) : (
-                        <span className="text-[#525E70]">0 kg</span>
+                        <span className="text-ink-muted">0 kg</span>
                       )}
                     </td>
 
-                    <td className="py-3 px-4 text-[#334155] max-w-xs">
+                    <td className="py-3 px-4 text-ink-secondary max-w-xs">
                       <p className="leading-relaxed">{m.healthAdvisory}</p>
                     </td>
                   </tr>
@@ -251,36 +263,36 @@ export function CommuteOptimizer({
         </div>
       </div>
 
-      {/* Sustainable Alternatives Ledger with Expandable Mechanism */}
+      {/* Sustainable Alternatives Ledger (spaced 2-col cards, zero divide artifacts) */}
       {plan.sustainableAlternatives.length > 0 && (
-        <section className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#DCE3EC] bg-[#F7F8FA]">
-            <h3 className="font-display text-base font-semibold text-[#0F172A]">
+        <section className="bg-surface border border-subtle rounded-xl elevation-1 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-subtle bg-canvas">
+            <h3 className="font-display text-base font-semibold text-ink">
               Sustainable Transit Actions
             </h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#DCE3EC]">
+          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
             {plan.sustainableAlternatives.map((alt, idx) => (
               <div
                 key={idx}
-                className="p-4 sm:p-5 text-xs flex flex-col justify-between gap-3"
+                className="rounded-lg border border-subtle bg-canvas p-4 sm:p-5 text-xs flex flex-col justify-between gap-3"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <h4 className="font-semibold text-[#0F172A] text-sm">
+                    <h4 className="font-semibold text-ink text-sm">
                       {alt.title}
                     </h4>
-                    <span className="text-xs font-mono tabular-nums text-[#525E70]">
+                    <span className="text-xs font-mono tabular-nums text-ink-muted">
                       {alt.timeframe}
                     </span>
                   </div>
-                  <p className="text-[#334155] leading-relaxed">{alt.action}</p>
+                  <p className="text-ink-secondary leading-relaxed">{alt.action}</p>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="px-3 py-2 rounded-md bg-[#F1F4F8] text-[#0F172A]">
+                  <div className="px-3 py-2 rounded-md bg-subtle text-ink">
                     <span className="font-semibold">Direct Impact: </span>
-                    <span className="text-[#065F46] font-medium">
+                    <span className="text-success font-medium">
                       {alt.directImpact}
                     </span>
                   </div>

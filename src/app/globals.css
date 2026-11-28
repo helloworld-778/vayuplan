@@ -15,9 +15,26 @@
   --color-ink-muted: var(--ink-muted);
   --color-ink-on-dark: var(--ink-on-dark);
   --color-ink-on-dark-muted: var(--ink-on-dark-muted);
+  /* Accent Tokens (Signal Pine-Teal on light, Luminous Teal on obsidian) */
   --color-accent: var(--accent-primary);
   --color-accent-hover: var(--accent-primary-hover);
   --color-accent-on-dark: var(--accent-on-dark);
+  --color-accent-wash: var(--accent-wash);
+  --color-accent-border: var(--accent-border);
+
+  /* Semantic Status Surfaces, Text & Borders */
+  --color-danger: var(--status-danger-ink);
+  --color-danger-icon: var(--status-danger-accent);
+  --background-color-danger-surface: var(--status-danger-bg);
+  --border-color-danger: var(--status-danger-border);
+
+  --color-success: var(--status-success-ink);
+  --background-color-success-surface: var(--status-success-bg);
+  --border-color-success: var(--status-success-border);
+
+  --color-warning: var(--status-warning-ink);
+  --background-color-warning-surface: var(--status-warning-bg);
+  --border-color-warning: var(--status-warning-border);
 
   /* Split background vs border "subtle" tokens cleanly to prevent collision */
   --background-color-canvas: var(--bg-canvas);
@@ -54,11 +71,25 @@
     --accent-primary: #0F766E;
     --accent-primary-hover: #115E59;
     --accent-on-dark: #2DD4BF;
+    --accent-wash: #E6F4F1;
+    --accent-border: #99D5CE;
 
     /* Hairline & WCAG SC 1.4.11 Solid Control Borders */
     --border-subtle: #E3E0D7;
     --border-control: #6B7874;
     --border-dark: #243531;
+
+    /* Semantic Status Colors */
+    --status-danger-bg: #FEF2F2;
+    --status-danger-ink: #991B1B;
+    --status-danger-border: #FCA5A5;
+    --status-danger-accent: #DC2626;
+    --status-success-bg: #ECFDF5;
+    --status-success-ink: #065F46;
+    --status-success-border: #6EE7B7;
+    --status-warning-bg: #FFFBEB;
+    --status-warning-ink: #92400E;
+    --status-warning-border: #FCD34D;
 
     /* CPCB NAQI Light & Dark-Surface Reference Tokens */
     --naqi-good-text: #065F46;
@@ -119,6 +150,15 @@
   :focus-visible {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
+  }
+}
+
+/* Windows Forced Colors fallback so pressed buttons retain unambiguous borders */
+@media (forced-colors: active) {
+  [aria-pressed="true"],
+  [aria-selected="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 

@@ -177,12 +177,19 @@ describe("IndoorActionLab Component", () => {
     expect(screen.getByText("Eliminate Incense / Mosquito Coil")).toBeInTheDocument();
     expect(screen.getByText("45 µg/m³")).toBeInTheDocument();
 
-    // Progressive disclosure: mechanism notes start collapsed and expand on click
-    expect(screen.queryByText(/Active HEPA filtration captures fine particulate mass/i)).not.toBeInTheDocument();
+    // Progressive disclosure: CSS .disclosure-grid starts closed (data-open="false", aria-hidden="true", inert) and opens cleanly
+    const mechText = screen.getByText(/Active HEPA filtration captures fine particulate mass/i);
+    const gridWrapper = mechText.closest(".disclosure-grid");
+    expect(gridWrapper).toHaveAttribute("data-open", "false");
+    expect(gridWrapper).toHaveAttribute("aria-hidden", "true");
+    expect(gridWrapper).toHaveAttribute("inert");
+
     const toggles = screen.getAllByRole("button", { name: /why this works/i });
     expect(toggles[0]).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggles[0]);
     expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/Active HEPA filtration captures fine particulate mass/i)).toBeInTheDocument();
+    expect(gridWrapper).toHaveAttribute("data-open", "true");
+    expect(gridWrapper).toHaveAttribute("aria-hidden", "false");
+    expect(gridWrapper).not.toHaveAttribute("inert");
   });
 });

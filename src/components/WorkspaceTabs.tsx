@@ -84,7 +84,7 @@ export function WorkspaceTabs({
   return (
     <div className="space-y-6">
       {/* Animated Tab Navigation Header */}
-      <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl px-2 pt-2 elevation-1">
+      <div className="bg-surface border border-subtle rounded-xl px-2 pt-2 elevation-1">
         <div
           role="tablist"
           aria-label="VayuPlan workspace modules"
@@ -110,14 +110,14 @@ export function WorkspaceTabs({
                 onKeyDown={(e) => handleKeyDown(e, idx)}
                 className={`relative flex items-center gap-2 py-3 px-4 min-h-[44px] text-xs font-semibold transition-colors whitespace-nowrap rounded-t-lg ${
                   isActive
-                    ? "text-[#0F172A]"
-                    : "text-[#525E70] hover:text-[#0F172A]"
+                    ? "text-ink"
+                    : "text-ink-muted hover:text-ink"
                 }`}
               >
                 <Icon
                   aria-hidden={true}
                   className={`w-4 h-4 ${
-                    isActive ? "text-[#1D4ED8]" : "text-[#525E70]"
+                    isActive ? "text-accent" : "text-ink-muted"
                   }`}
                 />
                 <span>{tab.label}</span>
@@ -125,7 +125,7 @@ export function WorkspaceTabs({
                   <motion.span
                     layoutId="workspace-active-tab"
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#1D4ED8] rounded-full"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full"
                     aria-hidden="true"
                   />
                 )}
@@ -138,22 +138,22 @@ export function WorkspaceTabs({
       {/* Tab Content Panels */}
       <div>
         {isPlanLoading && !plan ? (
-          <div className="p-8 bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 space-y-4 animate-pulse">
-            <div className="h-5 w-48 bg-[#F1F4F8] rounded" />
-            <div className="h-48 w-full bg-[#F1F4F8] rounded-lg" />
+          <div className="p-8 bg-surface border border-subtle rounded-xl elevation-1 space-y-4 animate-pulse">
+            <div className="h-5 w-48 bg-subtle rounded" />
+            <div className="h-48 w-full bg-subtle rounded-lg" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="h-24 bg-[#F1F4F8] rounded-lg" />
-              <div className="h-24 bg-[#F1F4F8] rounded-lg" />
+              <div className="h-24 bg-subtle rounded-lg" />
+              <div className="h-24 bg-subtle rounded-lg" />
             </div>
           </div>
         ) : planError && !plan ? (
           <div
             role="alert"
-            className="p-6 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-[#991B1B]"
+            className="p-6 bg-danger-surface border border-danger rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-danger"
           >
             <div className="flex items-start gap-2.5">
               <AlertCircle
-                className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5"
+                className="w-5 h-5 text-danger-icon shrink-0 mt-0.5"
                 aria-hidden="true"
               />
               <div>
@@ -167,7 +167,7 @@ export function WorkspaceTabs({
               <button
                 type="button"
                 onClick={onRetryPlan}
-                className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg bg-[#FFFFFF] border border-[#FCA5A5] hover:border-[#991B1B] font-semibold text-[#991B1B] shrink-0"
+                className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg bg-surface border border-danger hover:border-obsidian font-semibold text-danger shrink-0"
               >
                 <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Retry Plan</span>
@@ -181,7 +181,6 @@ export function WorkspaceTabs({
               role="tabpanel"
               id={`tabpanel-${activeTab}`}
               aria-labelledby={`tab-${activeTab}`}
-              tabIndex={0}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -215,17 +214,17 @@ export function WorkspaceTabs({
             </motion.div>
           </AnimatePresence>
         ) : (
-          <div className="p-8 text-center bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-1 space-y-3">
-            <p className="text-xs text-[#525E70]">
+          <div className="p-8 text-center bg-surface border border-subtle rounded-xl elevation-1 space-y-3">
+            <p className="text-xs text-ink-muted">
               No plan available. Refresh telemetry or regenerate the household plan.
             </p>
             {onRetryPlan && (
               <button
                 type="button"
                 onClick={onRetryPlan}
-                className="inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-lg border border-[#64748B]/70 bg-[#FFFFFF] text-xs font-semibold text-[#0F172A] hover:border-[#1D4ED8]"
+                className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg border border-control bg-surface text-xs font-semibold text-ink hover:border-accent transition-colors"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-[#1D4ED8]" aria-hidden="true" />
+                <RefreshCw className="w-3.5 h-3.5 text-accent" aria-hidden="true" />
                 <span>Generate Plan</span>
               </button>
             )}

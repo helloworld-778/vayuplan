@@ -160,29 +160,30 @@ export function TopBar({
     }
   };
 
+  const hasResults = suggestions.length > 0;
   const activeOptionId =
     isOpen && highlightedIndex >= 0 && suggestions[highlightedIndex]
       ? `location-option-${highlightedIndex}`
       : undefined;
 
   return (
-    <header className="sm:sticky sm:top-0 z-40 border-b border-[#DCE3EC] bg-[#FFFFFF]">
+    <header className="sm:sticky sm:top-0 z-40 border-b border-subtle bg-surface">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 flex flex-wrap items-center justify-between gap-3">
         {/* Left: Brand Link Back to Overview / */}
         <div className="flex items-center gap-3 shrink-0">
           <Link
             href="/"
             aria-label="Back to VayuPlan overview"
-            className="inline-flex items-center gap-2.5 group rounded-lg pr-2 py-1"
+            className="inline-flex items-center gap-2.5 group rounded-lg pr-2 min-h-[44px]"
           >
-            <span className="w-9 h-9 rounded-lg bg-[#0F172A] group-hover:bg-[#1D4ED8] text-[#FFFFFF] flex items-center justify-center transition-colors">
-              <Wind className="w-4 h-4 text-[#93C5FD]" aria-hidden="true" />
+            <span className="w-9 h-9 rounded-lg bg-obsidian group-hover:bg-accent text-ink-on-dark flex items-center justify-center transition-colors">
+              <Wind className="w-4 h-4 text-accent-on-dark" aria-hidden="true" />
             </span>
             <span className="flex flex-col">
-              <span className="font-display font-bold text-lg leading-tight tracking-tight text-[#0F172A]">
+              <span className="font-display font-bold text-lg leading-tight tracking-tight text-ink">
                 VayuPlan
               </span>
-              <span className="inline-flex items-center gap-1 text-xs text-[#525E70] group-hover:text-[#1D4ED8] transition-colors">
+              <span className="inline-flex items-center gap-1 text-xs text-ink-muted group-hover:text-accent transition-colors">
                 <ArrowLeft className="w-3 h-3" aria-hidden="true" />
                 <span>Overview</span>
               </span>
@@ -195,13 +196,13 @@ export function TopBar({
           <div ref={searchContainerRef} className="relative flex-1 min-w-0">
             <div className="relative flex items-center">
               <Search
-                className="w-4 h-4 text-[#525E70] absolute left-3 pointer-events-none"
+                className="w-4 h-4 text-ink-muted absolute left-3 pointer-events-none"
                 aria-hidden="true"
               />
               <input
                 type="text"
                 role="combobox"
-                aria-expanded={isOpen}
+                aria-expanded={isOpen && hasResults}
                 aria-autocomplete="list"
                 aria-controls="location-results"
                 aria-activedescendant={activeOptionId}
@@ -211,66 +212,70 @@ export function TopBar({
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => query.trim().length >= 2 && setIsOpen(true)}
-                className="w-full text-base sm:text-sm pl-9 pr-9 py-2 min-h-[44px] bg-[#F1F4F8] border border-[#64748B]/70 rounded-lg text-[#0F172A] placeholder:text-[#525E70] focus:bg-[#FFFFFF] focus:border-[#1D4ED8] transition-colors"
+                className="w-full text-base sm:text-sm pl-9 pr-9 py-2 min-h-[44px] bg-subtle border border-control rounded-lg text-ink placeholder:text-ink-muted focus:bg-surface focus:border-accent transition-colors"
               />
               {isSearching && (
                 <Loader2
-                  className="w-4 h-4 text-[#1D4ED8] animate-spin absolute right-3 pointer-events-none"
+                  className="w-4 h-4 text-accent motion-safe:animate-spin absolute right-3 pointer-events-none"
                   aria-hidden="true"
                 />
               )}
             </div>
 
-            {isOpen && (
+            {isOpen && hasResults && (
               <ul
                 id="location-results"
                 role="listbox"
                 aria-label="Indian city search results"
-                className="absolute left-0 right-0 top-full mt-1.5 bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg elevation-3 overflow-hidden z-50 max-h-64 overflow-y-auto"
+                className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-control rounded-lg elevation-3 overflow-hidden z-50 max-h-64 overflow-y-auto"
               >
-                {suggestions.length > 0 ? (
-                  suggestions.map((loc, idx) => (
-                    <li
-                      key={`${loc.lat}-${loc.lon}-${idx}`}
-                      id={`location-option-${idx}`}
-                      role="option"
-                      aria-selected={idx === highlightedIndex}
-                      onClick={() => {
-                        onSelectLocation(loc);
-                        setQuery("");
-                        setIsOpen(false);
-                        setHighlightedIndex(-1);
-                      }}
-                      onMouseEnter={() => setHighlightedIndex(idx)}
-                      className={`px-3.5 py-2.5 cursor-pointer text-sm flex items-center justify-between transition-colors ${
-                        idx === highlightedIndex
-                          ? "bg-[#EFF6FF] text-[#0F172A]"
-                          : "text-[#334155] hover:bg-[#F7F8FA]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <MapPin
-                          className="w-4 h-4 text-[#1D4ED8] shrink-0"
-                          aria-hidden="true"
-                        />
-                        <span className="font-medium text-[#0F172A] truncate">
-                          {loc.name}
-                        </span>
-                        <span className="text-xs text-[#525E70] truncate">
-                          ({loc.state})
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono tabular-nums text-[#525E70] ml-2 shrink-0">
-                        {loc.lat.toFixed(2)}°, {loc.lon.toFixed(2)}°
+                {suggestions.map((loc, idx) => (
+                  <li
+                    key={`${loc.lat}-${loc.lon}-${idx}`}
+                    id={`location-option-${idx}`}
+                    role="option"
+                    aria-selected={idx === highlightedIndex}
+                    onClick={() => {
+                      onSelectLocation(loc);
+                      setQuery("");
+                      setIsOpen(false);
+                      setHighlightedIndex(-1);
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    className={`px-3.5 py-2.5 min-h-[44px] cursor-pointer text-sm flex items-center justify-between transition-colors ${
+                      idx === highlightedIndex
+                        ? "bg-accent-wash text-ink"
+                        : "text-ink-secondary hover:bg-canvas"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin
+                        className="w-4 h-4 text-accent shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="font-medium text-ink truncate">
+                        {loc.name}
                       </span>
-                    </li>
-                  ))
-                ) : !isSearching ? (
-                  <li className="px-3.5 py-3 text-xs text-[#525E70]">
-                    No Indian cities matched &ldquo;{query.trim()}&rdquo;. Try another city or district name.
+                      <span className="text-xs text-ink-muted truncate">
+                        ({loc.state})
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono tabular-nums text-ink-muted ml-2 shrink-0">
+                      {loc.lat.toFixed(2)}°, {loc.lon.toFixed(2)}°
+                    </span>
                   </li>
-                ) : null}
+                ))}
               </ul>
+            )}
+
+            {isOpen && !hasResults && !isSearching && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-control rounded-lg elevation-3 px-3.5 py-3 text-xs text-ink-muted z-50"
+              >
+                No Indian cities matched &ldquo;{query.trim()}&rdquo;. Try another city or district name.
+              </div>
             )}
           </div>
 
@@ -281,15 +286,15 @@ export function TopBar({
             disabled={isLocating || isLoading}
             aria-label="Use my current GPS location"
             title="Locate via GPS"
-            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3.5 min-h-[44px] min-w-[44px] border border-[#64748B]/70 bg-[#FFFFFF] text-[#0F172A] hover:border-[#1D4ED8] hover:text-[#1D4ED8] rounded-lg transition-colors disabled:opacity-55 shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3.5 min-h-[44px] min-w-[44px] border border-control bg-surface text-ink hover:border-accent hover:text-accent rounded-lg transition-colors disabled:opacity-55 shrink-0"
           >
             {isLocating ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#1D4ED8]" aria-hidden="true" />
-            ) : (
-              <Navigation
-                className="w-4 h-4 text-[#1D4ED8]"
+              <Loader2
+                className="w-4 h-4 motion-safe:animate-spin text-accent"
                 aria-hidden="true"
               />
+            ) : (
+              <Navigation className="w-4 h-4 text-accent" aria-hidden="true" />
             )}
             <span className="hidden sm:inline">GPS</span>
           </motion.button>
@@ -311,17 +316,17 @@ export function TopBar({
                   title={preset.description}
                   aria-label={`${preset.title}: ${preset.description}`}
                   aria-pressed={isActive}
-                  className={`relative px-3 min-h-[40px] rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                  className={`relative px-3.5 min-h-[44px] rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                     isActive
-                      ? "text-[#FFFFFF] border-[#0F172A]"
-                      : "bg-[#F1F4F8] text-[#334155] border-[#DCE3EC] hover:border-[#1D4ED8] hover:text-[#0F172A]"
+                      ? "bg-obsidian text-ink-on-dark border-obsidian"
+                      : "bg-subtle text-ink-secondary border-control hover:border-accent hover:text-ink"
                   }`}
                 >
                   {isActive && (
                     <motion.span
                       layoutId="topbar-preset-pill"
                       transition={{ type: "spring", stiffness: 440, damping: 34 }}
-                      className="absolute inset-0 bg-[#0F172A] rounded-[7px]"
+                      className="absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-accent-on-dark"
                       aria-hidden="true"
                     />
                   )}
@@ -336,18 +341,18 @@ export function TopBar({
       {geoError && (
         <div
           role="alert"
-          className="bg-[#FEF2F2] border-t border-[#FCA5A5] px-4 sm:px-6 lg:px-8 py-2 text-xs text-[#991B1B]"
+          className="bg-danger-surface border-t border-danger px-4 sm:px-6 lg:px-8 py-2 text-xs text-danger"
         >
           <div className="max-w-[1440px] mx-auto flex items-center gap-2">
             <AlertCircle
-              className="w-4 h-4 text-[#DC2626] shrink-0"
+              className="w-4 h-4 text-danger-icon shrink-0"
               aria-hidden="true"
             />
             <span>{geoError}</span>
             <button
               type="button"
               onClick={() => setGeoError(null)}
-              className="ml-auto px-3 py-1.5 min-h-[36px] rounded border border-[#FCA5A5] bg-[#FFFFFF] font-semibold text-[#991B1B] hover:border-[#991B1B] transition-colors shrink-0"
+              className="ml-auto px-3.5 min-h-[44px] rounded-lg border border-danger bg-surface font-semibold text-danger hover:border-obsidian transition-colors shrink-0"
             >
               Dismiss
             </button>

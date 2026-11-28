@@ -114,4 +114,33 @@ describe("GroundedChat Component", () => {
 
     expect(screen.getByText("Deterministic Physics Fallback")).toBeInTheDocument();
   });
+
+  it("keeps static empty state outside role=log and submits via textarea Enter key without Shift", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        answer: "Keep balcony doors sealed during evening thermal inversion.",
+        mode: "ai",
+        citedMetrics: ["NAQI 260"],
+      }),
+    } as Response);
+
+    render(<GroundedChat snapshot={mockSnapshot} profile={mockProfile} />);
+
+    // Empty state is outside live region until conversation starts
+    expect(screen.queryByRole("log")).not.toBeInTheDocument();
+
+    const composer = screen.getByPlaceholderText(/Ask anything about today's air quality/i);
+    expect(composer.tagName).toBe("TEXTAREA");
+
+    fireEvent.change(composer, { target: { value: "Should we close balconies?" } });
+    fireEvent.keyDown(composer, { key: "Enter", shiftKey: true });
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(composer, { key: "Enter", shiftKey: false });
+    await waitFor(() => {
+      expect(screen.getByRole("log")).toBeInTheDocument();
+      expect(screen.getByText(/Keep balcony doors sealed/i)).toBeInTheDocument();
+    });
+  });
 });

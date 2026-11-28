@@ -80,11 +80,11 @@ function AssistantWorkspaceContent() {
     const focusTimer = setTimeout(() => {
       const dialog = mobileDialogRef.current;
       if (!dialog) return;
-      const input = dialog.querySelector<HTMLInputElement>(
-        'input[type="text"]'
+      const composer = dialog.querySelector<HTMLElement>(
+        'textarea[aria-label="Ask VayuPlan a question"], input[type="text"]'
       );
-      if (input) {
-        input.focus();
+      if (composer) {
+        composer.focus();
       } else {
         dialog.focus();
       }
@@ -198,7 +198,9 @@ function AssistantWorkspaceContent() {
 
         if (!res.ok) {
           const errData = await res.json();
-          throw new Error(errData.error || "Plan generation encountered an issue.");
+          throw new Error(
+            errData.error || "Plan generation encountered an issue."
+          );
         }
 
         const data = await res.json();
@@ -342,8 +344,14 @@ function AssistantWorkspaceContent() {
     setPlanError(null);
 
     try {
-      localStorage.setItem(STORAGE_KEY_LOCATION, JSON.stringify(preset.location));
-      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(preset.profile));
+      localStorage.setItem(
+        STORAGE_KEY_LOCATION,
+        JSON.stringify(preset.location)
+      );
+      localStorage.setItem(
+        STORAGE_KEY_PROFILE,
+        JSON.stringify(preset.profile)
+      );
     } catch {
       // Ignore quota error
     }
@@ -358,7 +366,10 @@ function AssistantWorkspaceContent() {
     setProfile(updatedProfile);
     setActivePresetId(null);
     try {
-      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(updatedProfile));
+      localStorage.setItem(
+        STORAGE_KEY_PROFILE,
+        JSON.stringify(updatedProfile)
+      );
     } catch {
       // Ignore quota error
     }
@@ -401,97 +412,78 @@ function AssistantWorkspaceContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F8FA] text-[#0F172A] overflow-x-clip">
+    <div className="min-h-screen flex flex-col bg-canvas text-ink overflow-x-clip">
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {liveAnnouncement}
       </div>
 
-      <TopBar
-        currentLocation={location}
-        onSelectLocation={handleSelectLocation}
-        activePresetId={activePresetId}
-        onSelectPreset={handleSelectPreset}
-        isLoading={isTelemetryLoading}
-      />
-
-      <main
-        id="main-content"
-        className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+      {/* Background Workspace Shell isolated via inert + aria-hidden when mobile Copilot modal opens */}
+      <div
+        data-testid="assistant-background-shell"
+        inert={isMobileCopilotOpen || undefined}
+        aria-hidden={isMobileCopilotOpen || undefined}
+        className="flex-1 flex flex-col"
       >
-        {errorMessage && (
-          <div
-            role="alert"
-            className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] flex flex-wrap items-start justify-between gap-3 text-xs elevation-1"
-          >
-            <div className="flex items-start gap-2.5">
-              <AlertCircle
-                className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5"
-                aria-hidden="true"
-              />
-              <div>
-                <span className="font-semibold block text-sm">
-                  Telemetry Service Alert
-                </span>
-                <p className="mt-0.5">{errorMessage}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => loadTelemetry(location)}
-              className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] bg-[#FFFFFF] border border-[#FCA5A5] hover:border-[#991B1B] rounded-lg text-[#991B1B] font-semibold shrink-0 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Retry</span>
-            </button>
-          </div>
-        )}
-
-        {/* Collapsible Household Context Bar */}
-        <HouseholdProfiler
-          profile={profile}
-          onChangeProfile={handleChangeProfile}
-          onApplyPlan={handleApplyPlan}
-          isPlanLoading={isPlanLoading}
+        <TopBar
+          currentLocation={location}
+          onSelectLocation={handleSelectLocation}
+          activePresetId={activePresetId}
+          onSelectPreset={handleSelectPreset}
+          isLoading={isTelemetryLoading}
         />
 
-        {/* Two-Column AI-First Split Cockpit (Left Column strictly vertically stacked — zero 3-col squeeze) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
-          {/* Left Primary Intelligence Column */}
-          <div className="min-w-0 space-y-6">
-            <TelemetryHero
-              snapshot={snapshot}
-              isLoading={isTelemetryLoading}
-              onRefresh={() => loadTelemetry(location)}
-            />
-
-            {snapshot ? (
-              <TodaysSmartBrief
-                snapshot={snapshot}
-                profile={profile}
-                plan={plan}
-                analytics={analytics}
-                isPlanLoading={isPlanLoading}
-                planError={planError}
-                onRetryPlan={handleRetryPlan}
-                onJumpToTab={handleJumpToTab}
-                onAskCopilot={handleAskCopilot}
-              />
-            ) : (
-              <div className="bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl p-6 elevation-1 animate-pulse space-y-4">
-                <div className="h-5 w-40 bg-[#F1F4F8] rounded" />
-                <div className="h-4 w-full bg-[#F1F4F8] rounded" />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
-                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
-                  <div className="h-20 bg-[#F1F4F8] rounded-lg" />
+        <main
+          id="main-content"
+          className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+        >
+          {errorMessage && (
+            <div
+              role="alert"
+              className="p-4 rounded-xl bg-danger-surface border border-danger text-danger flex flex-wrap items-start justify-between gap-3 text-xs elevation-1"
+            >
+              <div className="flex items-start gap-2.5">
+                <AlertCircle
+                  className="w-4 h-4 text-danger-icon shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
+                <div>
+                  <span className="font-semibold block text-sm">
+                    Telemetry Service Alert
+                  </span>
+                  <p className="mt-0.5">{errorMessage}</p>
                 </div>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => loadTelemetry(location)}
+                className="inline-flex items-center gap-1.5 px-3.5 min-h-[44px] bg-surface border border-danger hover:border-obsidian rounded-lg text-danger font-semibold shrink-0 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Retry</span>
+              </button>
+            </div>
+          )}
 
-            {/* 3 Focused Analytical Tabs */}
-            {snapshot && (
-              <div ref={tabsSectionRef}>
-                <WorkspaceTabs
+          {/* Collapsible Zero-Reflow Household Context Bar */}
+          <HouseholdProfiler
+            profile={profile}
+            onChangeProfile={handleChangeProfile}
+            onApplyPlan={handleApplyPlan}
+            isPlanLoading={isPlanLoading}
+          />
+
+          {/* Two-Column AI-First Split Cockpit */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
+            {/* Left Primary Intelligence Column */}
+            <div className="min-w-0 space-y-6">
+              <TelemetryHero
+                snapshot={snapshot}
+                isLoading={isTelemetryLoading}
+                onRefresh={() => loadTelemetry(location)}
+              />
+
+              {snapshot ? (
+                <TodaysSmartBrief
                   snapshot={snapshot}
                   profile={profile}
                   plan={plan}
@@ -499,57 +491,100 @@ function AssistantWorkspaceContent() {
                   isPlanLoading={isPlanLoading}
                   planError={planError}
                   onRetryPlan={handleRetryPlan}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
+                  onJumpToTab={handleJumpToTab}
+                  onAskCopilot={handleAskCopilot}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="bg-surface border border-subtle rounded-xl p-6 elevation-1 animate-pulse space-y-4">
+                  <div className="h-5 w-40 bg-subtle rounded" />
+                  <div className="h-4 w-full bg-subtle rounded" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="h-20 bg-subtle rounded-lg" />
+                    <div className="h-20 bg-subtle rounded-lg" />
+                    <div className="h-20 bg-subtle rounded-lg" />
+                  </div>
+                </div>
+              )}
+
+              {/* 3 Focused Analytical Tabs */}
+              {snapshot && (
+                <div ref={tabsSectionRef}>
+                  <WorkspaceTabs
+                    snapshot={snapshot}
+                    profile={profile}
+                    plan={plan}
+                    analytics={analytics}
+                    isPlanLoading={isPlanLoading}
+                    planError={planError}
+                    onRetryPlan={handleRetryPlan}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right Persistent AI Copilot Rail (lg+ desktop viewports) */}
+            <aside
+              aria-label="Ask VayuPlan AI Copilot"
+              className="hidden lg:block sticky top-[84px]"
+            >
+              {snapshot ? (
+                <GroundedChat
+                  snapshot={snapshot}
+                  profile={profile}
+                  messages={chatMessages}
+                  onMessagesChange={setChatMessages}
+                  prefillRequest={copilotPrefill}
+                  className="h-[calc(100vh-100px)]"
+                />
+              ) : (
+                <div className="h-[calc(100vh-100px)] bg-surface border border-subtle rounded-xl elevation-2 p-5 animate-pulse space-y-4">
+                  <div className="h-10 bg-subtle rounded-lg" />
+                  <div className="h-24 bg-subtle rounded-lg" />
+                  <div className="h-12 bg-subtle rounded-lg" />
+                </div>
+              )}
+            </aside>
           </div>
+        </main>
 
-          {/* Right Persistent AI Copilot Rail (lg+ desktop viewports) */}
-          <aside
-            aria-label="Ask VayuPlan AI Copilot"
-            className="hidden lg:block sticky top-[84px]"
-          >
-            {snapshot ? (
-              <GroundedChat
-                snapshot={snapshot}
-                profile={profile}
-                messages={chatMessages}
-                onMessagesChange={setChatMessages}
-                prefillRequest={copilotPrefill}
-                className="h-[calc(100vh-100px)]"
-              />
-            ) : (
-              <div className="h-[calc(100vh-100px)] bg-[#FFFFFF] border border-[#DCE3EC] rounded-xl elevation-2 p-5 animate-pulse space-y-4">
-                <div className="h-10 bg-[#F1F4F8] rounded-lg" />
-                <div className="h-24 bg-[#F1F4F8] rounded-lg" />
-                <div className="h-12 bg-[#F1F4F8] rounded-lg" />
-              </div>
-            )}
-          </aside>
-        </div>
-      </main>
+        {/* Mobile / Tablet Floating Copilot Trigger (<1024px) */}
+        {snapshot && (
+          <div className="lg:hidden fixed bottom-5 right-5 z-40">
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              ref={mobileTriggerRef}
+              type="button"
+              onClick={() => setIsMobileCopilotOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={isMobileCopilotOpen}
+              className="inline-flex items-center gap-2 rounded-full bg-accent hover:bg-accent-hover text-white px-5 min-h-[48px] text-sm font-semibold elevation-3 transition-colors"
+            >
+              <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>Ask VayuPlan AI</span>
+            </motion.button>
+          </div>
+        )}
 
-      {/* Mobile / Tablet Floating Copilot Trigger (<1024px) */}
-      {snapshot && (
-        <div className="lg:hidden fixed bottom-5 right-5 z-40">
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            ref={mobileTriggerRef}
-            type="button"
-            onClick={() => setIsMobileCopilotOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={isMobileCopilotOpen}
-            className="inline-flex items-center gap-2 rounded-full bg-[#1D4ED8] hover:bg-[#1E40AF] text-[#FFFFFF] px-5 min-h-[48px] text-sm font-semibold elevation-3 transition-colors"
-          >
-            <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Ask VayuPlan AI</span>
-          </motion.button>
-        </div>
-      )}
+        <footer className="border-t border-subtle bg-surface py-6 px-4 sm:px-6 lg:px-8 mt-10 text-xs text-ink-muted">
+          <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-semibold text-ink">VayuPlan</span>
+              <span aria-hidden="true">·</span>
+              <span>CPCB NAQI Technical Reference</span>
+              <span aria-hidden="true">·</span>
+              <span>Informational guidance only, not medical advice</span>
+            </div>
 
-      {/* Mobile / Tablet Slide-Up Copilot Drawer */}
+            <div className="text-xs text-ink-muted">
+              Ground Station Telemetry via WAQI &amp; Open-Meteo CAMS · Grounded AI via Gemini
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      {/* Mobile / Tablet Slide-Up Copilot Drawer (mounted outside inert background shell) */}
       <AnimatePresence>
         {isMobileCopilotOpen && snapshot && (
           <motion.div
@@ -563,7 +598,7 @@ function AssistantWorkspaceContent() {
                 mobileTriggerRef.current?.focus();
               }
             }}
-            className="lg:hidden fixed inset-0 z-50 bg-[#0F172A]/45 flex items-end justify-center overscroll-contain"
+            className="lg:hidden fixed inset-0 z-50 bg-obsidian/55 flex items-end justify-center overscroll-contain"
           >
             <motion.div
               ref={mobileDialogRef}
@@ -593,22 +628,6 @@ function AssistantWorkspaceContent() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <footer className="border-t border-[#DCE3EC] bg-[#FFFFFF] py-6 px-4 sm:px-6 lg:px-8 mt-10 text-xs text-[#525E70]">
-        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-semibold text-[#0F172A]">VayuPlan</span>
-            <span aria-hidden="true">·</span>
-            <span>CPCB NAQI Technical Reference</span>
-            <span aria-hidden="true">·</span>
-            <span>Informational guidance only, not medical advice</span>
-          </div>
-
-          <div className="text-xs text-[#525E70]">
-            Ground Station Telemetry via WAQI &amp; Open-Meteo CAMS · Grounded AI via Gemini
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
@@ -617,7 +636,7 @@ export default function AssistantPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center p-8 text-sm text-[#525E70]">
+        <div className="min-h-screen bg-canvas flex items-center justify-center p-8 text-sm text-ink-muted">
           Loading VayuPlan workspace...
         </div>
       }

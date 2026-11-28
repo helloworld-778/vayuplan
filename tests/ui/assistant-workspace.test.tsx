@@ -268,15 +268,40 @@ describe("/assistant AI-First Split Cockpit", () => {
     expect(within(briefSection).getByText("Best Transit Switch")).toBeInTheDocument();
     expect(within(briefSection).getByText("Indoor Ventilation Directive")).toBeInTheDocument();
 
-    // Jump-pill inside Smart Brief switches analytical workspace tab cleanly
+    // Jump-pill inside Smart Brief switches analytical workspace tab cleanly without redundant tabIndex on tabpanel
     fireEvent.click(within(briefSection).getByRole("button", { name: /Best Transit Switch/i }));
     await waitFor(() => {
-      expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "tabpanel-commute");
+      const panel = screen.getByRole("tabpanel");
+      expect(panel).toHaveAttribute("id", "tabpanel-commute");
+      expect(panel).not.toHaveAttribute("tabindex", "0");
     });
 
     // Persistent AI Copilot rail is immediately mounted without clicking any tab
     const copilotRail = screen.getByRole("complementary", { name: /ask vayuplan ai copilot/i });
     expect(within(copilotRail).getByText("Ask VayuPlan")).toBeInTheDocument();
+  });
+
+  it("isolates TopBar search empty state outside listbox and exposes aria-pressed on active preset", async () => {
+    render(<AssistantPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Morning PM2.5 in New Delhi/i)).toBeInTheDocument();
+    });
+
+    const presetsNav = screen.getByRole("navigation", { name: /quick city and persona presets/i });
+    const activePresetBtn = within(presetsNav).getByRole("button", { name: /Delhi Corporate Commuter/i });
+    expect(activePresetBtn).toHaveAttribute("aria-pressed", "true");
+
+    const combobox = screen.getByRole("combobox", { name: /search indian city/i });
+    fireEvent.change(combobox, { target: { value: "ZzzUnknownCity" } });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/No Indian cities matched/i)).toBeInTheDocument();
+      },
+      { timeout: 1500 }
+    );
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("expands the Household Context Bar, locks commute slider to 0 km for WFH, applies updated profile without stale closure, and prefills Copilot", async () => {
@@ -311,29 +336,35 @@ describe("/assistant AI-First Split Cockpit", () => {
       expect(lastBody.profile.commuteDistanceKm).toBe(0);
     });
 
-    // Triggering Ask Copilot about this brief populates the Copilot composer
+    // Triggering Ask Copilot about this brief populates the Copilot textarea composer
     fireEvent.click(screen.getByRole("button", { name: /ask copilot about this brief/i }));
     const copilotRail = screen.getByRole("complementary", { name: /ask vayuplan ai copilot/i });
-    const composer = within(copilotRail).getByLabelText(/ask vayuplan a question/i) as HTMLInputElement;
+    const composer = within(copilotRail).getByLabelText(/ask vayuplan a question/i) as HTMLTextAreaElement;
     expect(composer.value).toContain("New Delhi");
   });
 
-  it("opens and closes the accessible mobile Ask VayuPlan AI sheet drawer", async () => {
+  it("opens and closes the accessible mobile Ask VayuPlan AI sheet drawer with background inert isolation", async () => {
     render(<AssistantPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/Morning PM2.5 in New Delhi/i)).toBeInTheDocument();
     });
 
+    const backgroundShell = screen.getByTestId("assistant-background-shell");
+    expect(backgroundShell).not.toHaveAttribute("inert");
+
     const mobileTrigger = screen.getByRole("button", { name: /ask vayuplan ai/i });
     fireEvent.click(mobileTrigger);
 
     const dialog = await screen.findByRole("dialog", { name: /ask vayuplan ai copilot/i });
     expect(dialog).toBeInTheDocument();
+    expect(backgroundShell).toHaveAttribute("inert");
+    expect(backgroundShell).toHaveAttribute("aria-hidden", "true");
 
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: /ask vayuplan ai copilot/i })).not.toBeInTheDocument();
     });
+    expect(backgroundShell).not.toHaveAttribute("inert");
   });
 });
